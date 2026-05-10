@@ -94,7 +94,7 @@
 - **ADS ➔ MySQL**
   - 指标出库，供 BI 展示
 
-#### 流程图：
+#### 🔁 流程图：
 ```mermaid
 graph LR
     %% 定义样式
@@ -135,8 +135,8 @@ graph LR
     class ADS ads;
     class MySQL_App,BI out;
 ```
-## ⚡ 4. 压测报告：5000万级数据性能表现测试集规模： 
-#### 注：测试所用集群为：主节点 5g 4核，两个从节点 3g 3核
+## ✅ 4. 压测报告：5000万级数据性能表现测试集规模： 
+#### 🚨 注：测试所用集群为：主节点 5g 4核，两个从节点 3g 3核
 ### 用户行为  + 商品评论 +历史维度数据 ≈ 50,000,000 条,3G的数据
 通过对 YARN 内存分配的深度优化（调整 `executor.memory` 为 800M，压低 `maxPartitionBytes`），集群展现了卓越的处理效率
 
@@ -147,6 +147,9 @@ graph LR
 * 数据聚合 (DWD -> DWS)： 1 m 30 s (加盐策略成功化解数据倾斜)
 * 深度建模 (DWS -> ADS)： 39 s (ORC 分桶读取加速查询)
 * 结果出库 (ADS -> MySQL)： 49 s (DataX 多 Channel 并发写入)
+
+#### 🎉 Airflow界面展示
+<img width="2000" height="1000" alt="image" src="https://github.com/user-attachments/assets/d27c953c-aed5-4cdb-8ab0-7ca1c45d3398" />
 
 ## 🛡️ 5. 任务治理与任务监控
 
