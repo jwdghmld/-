@@ -7,13 +7,13 @@ import itertools
 TARGET_MB = 10  # 生成文件大小 (1024MB = 1GB)
 TARGET_BYTES = TARGET_MB * 1024 * 1024
 
-FILE_BEHAVIOR_IN = 'user_behavior.csv'
+FILE_BEHAVIOR_IN = 'user_behavior.csv'   #原始用户行为文件
 FILE_BEHAVIOR_OUT = 'UserBehavior.csv'
 
-FILE_COMMENT_IN = 'user_comments.csv'
+FILE_COMMENT_IN = 'user_comments.csv'    #原始用户评论文件
 FILE_COMMENT_OUT = 'UserComments.csv'
 
-# ================= 核心突破一：三层转化漏斗配置 =================
+# ================= 三层转化漏斗配置 =================
 BEHAVIOR_TYPES = ['pv', 'cart', 'buy']
 FUNNELS = [
     [34, 33, 33],  # 效果1【完全平均】
@@ -21,7 +21,7 @@ FUNNELS = [
     [10, 45, 45]  # 效果3【Cart/Buy 主导】
 ]
 
-# ================= 核心突破二：真实语境造句引擎 =================
+# ================= 真实语境造句引擎 =================
 POS_PREFIX = ["发货真快，", "物流很赞，", "包装很用心，", "昨天刚下单今天就到了，", "期待了很久，", ""]
 POS_CORE = ["质量很不错", "屏幕非常清晰", "味道特别好吃", "东西真的很好", "做工比想象中好", "给的赠品很多"]
 POS_SUFFIX = ["，特别喜欢！", "，非常满意。", "，绝对值得买！", "，全五分好评！", "，下次还来回购。"]
@@ -55,14 +55,14 @@ def generate_realistic_comment():
     return res[:25]
 
 
-# ================= 核心突破三：智能编码探测加载器 =================
+# ================= 智能编码探测加载器 =================
 def load_seeds(filepath):
     """智能探测文件编码并读取原始数据，彻底杜绝乱码"""
     seeds = []
-    print(f"📦 正在分析原始文件: {filepath} ...")
+    print(f"正在分析原始文件: {filepath} ...")
 
     if not os.path.exists(filepath):
-        print(f"❌ 找不到原始文件: {filepath}")
+        print(f"找不到原始文件: {filepath}")
         return []
 
     # 1. 探测编码 (优先尝试 utf-8，失败则切到中国区万能的 gb18030)
@@ -75,7 +75,7 @@ def load_seeds(filepath):
     except UnicodeDecodeError:
         best_encoding = 'gb18030'  # gb18030 是最全的中文编码集，完美兼容 GBK 和 ANSI
 
-    print(f"✅ 探测完毕，使用 [{best_encoding}] 编码加载数据...")
+    print(f"探测完毕，使用 [{best_encoding}] 编码加载数据...")
 
     # 2. 正式读取
     with open(filepath, 'r', encoding=best_encoding, errors='ignore') as f:
@@ -84,7 +84,7 @@ def load_seeds(filepath):
             if not line: break
             if line.strip(): seeds.append(line.strip())
 
-    print(f"✅ 成功加载 {len(seeds)} 条无乱码种子数据！\n")
+    print(f"成功加载 {len(seeds)} 条无乱码种子数据！\n")
     return seeds
 
 
@@ -92,7 +92,7 @@ def load_seeds(filepath):
 
 def generate_zipf_cum_weights(num_items, skewness=1.3):
     """生成幂律分布权重，制造数据倾斜"""
-    print(f"⚙️ 正在生成数据倾斜权重矩阵...")
+    print(f"正在生成数据倾斜权重矩阵...")
     weights = [1.0 / (i ** skewness) for i in range(1, num_items + 1)]
     random.shuffle(weights)
     return list(itertools.accumulate(weights))
@@ -101,7 +101,7 @@ def generate_zipf_cum_weights(num_items, skewness=1.3):
 def build_behavior_stress(seeds):
     """生成行为压测表"""
     if not seeds: return
-    print(f"🚀 开始生成行为表 {FILE_BEHAVIOR_OUT}，目标: {TARGET_MB}MB...")
+    print(f"开始生成行为表 {FILE_BEHAVIOR_OUT}，目标: {TARGET_MB}MB...")
 
     cum_weights = generate_zipf_cum_weights(len(seeds), skewness=1.2)
 
@@ -132,13 +132,13 @@ def build_behavior_stress(seeds):
             if current_bytes % (50 * 1024 * 1024) < 100000:
                 print(f"   -> 行为数据生成进度: {current_bytes / 1024 / 1024:.2f} MB")
 
-    print(f"🎉 行为表生成完毕！物理大小: {os.path.getsize(FILE_BEHAVIOR_OUT) / 1024 / 1024:.2f} MB\n")
+    print(f"行为表生成完毕！物理大小: {os.path.getsize(FILE_BEHAVIOR_OUT) / 1024 / 1024:.2f} MB\n")
 
 
 def build_comment_stress(seeds):
     """生成高拟真自然语言评论表"""
     if not seeds: return
-    print(f"🚀 开始生成拟真评论表 {FILE_COMMENT_OUT}，目标: {TARGET_MB}MB...")
+    print(f"开始生成拟真评论表 {FILE_COMMENT_OUT}，目标: {TARGET_MB}MB...")
 
     cum_weights = generate_zipf_cum_weights(len(seeds), skewness=1.1)
 
@@ -164,7 +164,7 @@ def build_comment_stress(seeds):
             if current_bytes % (50 * 1024 * 1024) < 100000:
                 print(f"   -> 评论数据生成进度: {current_bytes / 1024 / 1024:.2f} MB")
 
-    print(f"🎉 评论表生成完毕！物理大小: {os.path.getsize(FILE_COMMENT_OUT) / 1024 / 1024:.2f} MB\n")
+    print(f"评论表生成完毕！物理大小: {os.path.getsize(FILE_COMMENT_OUT) / 1024 / 1024:.2f} MB\n")
 
 
 if __name__ == '__main__':
@@ -176,4 +176,4 @@ if __name__ == '__main__':
     comment_seeds = load_seeds(FILE_COMMENT_IN)
     build_comment_stress(comment_seeds)
 
-    print(f"🏆 全链路【智能防乱码+极度拟真】压测集备妥！总耗时: {time.time() - start_time:.2f} 秒")
+    print(f"全链路【智能防乱码+极度拟真】压测集备妥！总耗时: {time.time() - start_time:.2f} 秒")
