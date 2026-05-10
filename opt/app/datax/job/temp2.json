@@ -1,0 +1,42 @@
+{
+  "job": {
+    "setting": {
+      "speed": {
+        "channel": 3}
+    },
+    "content": [
+      {
+        "reader": {
+          "name": "txtfilereader",
+          "parameter": {
+            "path": ["/home/dage/input-c/${dt}.csv"],  
+            "column": [
+              {"index": 0, "type": "long"},
+              {"index": 1, "type": "long"},
+              {"index": 2, "type": "long"},
+              {"index": 3, "type": "string"}
+            ],
+            "fieldDelimiter": ",", 
+            "encoding": "UTF-8"
+          }
+        },
+        "writer": {
+          "name": "mysqlwriter",
+          "parameter": {
+             "username": "你的账户名字",
+             "password": "密码",
+            "column": ["user_id","goods_id","category_id","comment"],  
+            "connection": [
+              {
+                "table": ["comment_daily"],
+                "jdbcUrl": "jdbc:mysql://mysql所在节点ip:3306/bigdata?useUnicode=true&characterEncoding=utf-8&allowPublicKeyRetrieval=true"
+              }
+            ],
+            "preSql": ["truncate table comment_daily;"],
+            "writeMode": "insert"
+          }
+        }
+      }
+    ]
+  }
+}

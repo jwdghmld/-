@@ -1,0 +1,48 @@
+{
+  "job": {
+    "setting": {
+      "speed": {
+        "channel": 3}
+    },
+    "content": [
+      {
+        "reader": {
+          "name": "txtfilereader",
+          "parameter": {
+            "path": ["/home/dage/input-b/${dt}.csv"],  
+            "column": [
+              {"index": 0, "type": "long"},
+              {"index": 1, "type": "long"},
+              {"index": 2, "type": "long"},
+              {"index": 3, "type": "string"},
+              {"index": 4, "type": "string"},
+              {"index": 5, "type": "long"},
+              {"index": 6, "type": "string"},
+              {"index": 7, "type": "string"},
+              {"index": 8, "type": "long"},
+              {"index": 9, "type": "long"}
+            ],
+            "fieldDelimiter": ",", 
+            "encoding": "UTF-8"
+          }
+        },
+        "writer": {
+          "name": "mysqlwriter",
+          "parameter": {
+           "username": "你的账户名字",
+           "password": "密码",
+           "column": ["user_id","goods_id","category_id","behavior","timestamp","sex","address","device","price","amount"],  
+           "connection": [
+              {
+                "table": ["behavior_daily"],
+                "jdbcUrl": "jdbc:mysql://mysql所在节点ip:3306/bigdata?useUnicode=true&characterEncoding=utf-8&allowPublicKeyRetrieval=true"
+              }
+            ],
+            "preSql": ["truncate table  behavior_daily;"],
+            "writeMode": "insert"
+          }
+        }
+      }
+    ]
+  }
+}

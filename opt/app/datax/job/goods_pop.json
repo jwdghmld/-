@@ -1,0 +1,50 @@
+{
+    "job": {
+        "setting": {
+            "speed": {"channel": 3}},
+        "content": [
+            {
+                "reader": {
+                    "name": "hdfsreader",
+                    "parameter": {
+                        "path": "/user/hive/warehouse/ads.db/ads_goods_pop/dt=${dt}/*",
+                        "defaultFS": "hdfs://node1:8020",
+                        "column": [
+                            { "index": 0, "type": "string" },
+                            { "index": 1, "type": "double" },
+                            { "index": 2, "type": "long" },
+                            { "index": 3, "type": "string" }
+                        ],
+                        "fileType": "orc",
+                        "encoding": "UTF-8"
+                    }
+                },
+                "writer": {
+                    "name": "mysqlwriter",
+                    "parameter": {
+                        "writeMode": "insert",
+                         "username": "你的账户名字",
+                        "password": "密码",
+                        "column": [
+                            "category_label",
+                            "score",
+                            "rk",
+                            "dt"
+                        ],
+                        "preSql": [
+                            "delete from goods_pop where dt = '${dt}'"
+                        ],
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://你的mysql所在节点:3306/bigdata?allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=utf8",
+                                "table": [
+                                    "goods_pop"
+                                ]
+                            }
+                        ]
+                    }
+                }
+            }
+        ]
+    }
+}

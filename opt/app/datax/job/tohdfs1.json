@@ -1,0 +1,46 @@
+{
+  "job":{
+    "setting":{"speed":{"channel":3}},
+    "content":[
+      {
+        "reader":{
+          "name":"mysqlreader",
+          "parameter":{
+             "username": "你的账户名字",
+             "password": "密码",
+            "splitPk":"user_id",
+            "connection":[
+              {"jdbcUrl":["jdbc:mysql://mysql所在节点ip:3306/bigdata?allowPublicKeyRetrieval=true&useSSL=false"],
+              "table":["behavior_daily"]
+              }
+            ],
+            "column":["*"]
+          }
+        },
+        "writer":{
+          "name":"hdfswriter",
+          "parameter":{
+            "column":[
+              {"name": "user_id", "type": "BIGINT"},
+              {"name": "goods_id", "type": "BIGINT"},
+              {"name": "category_id", "type": "BIGINT"},
+              {"name": "behavior", "type": "BIGINT"},
+              {"name": "timestamp", "type": "BIGINT"},
+              {"name": "sex", "type": "BIGINT"},
+              {"name": "address", "type": "string"},
+              {"name": "device", "type": "string"},
+              {"name": "price", "type": "BIGINT"},
+              {"name": "amount", "type": "BIGINT"}
+            ],
+            "fileName":"beha",
+            "fieldDelimiter":",",
+            "defaultFS":"hdfs://node1:8020",
+            "path":"/input-b/",
+            "writeMode":"truncate",
+            "fileType":"text"
+          }
+        }
+      }
+    ]
+  }
+}

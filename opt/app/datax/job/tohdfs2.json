@@ -1,0 +1,40 @@
+{
+  "job":{
+    "setting":{"speed":{"channel":3}},
+    "content":[
+      {
+        "reader":{
+          "name":"mysqlreader",
+          "parameter":{
+             "username": "你的账户名字",
+             "password": "密码",
+            "splitPk":"user_id",
+            "connection":[
+              {"jdbcUrl":["jdbc:mysql://mysql所在节点ip:3306/bigdata?allowPublicKeyRetrieval=true&useSSL=false"],
+              "table":["comment_daily"]
+              }
+            ],
+            "column":["*"]
+          }
+        },
+        "writer":{
+          "name":"hdfswriter",
+          "parameter":{
+            "column":[
+              {"name": "user_id", "type": "BIGINT"},
+              {"name": "goods_id", "type": "BIGINT"},
+              {"name": "category_id", "type": "BIGINT"},
+              {"name": "comment", "type": "string"}
+            ],
+            "fileName":"comment",
+            "fieldDelimiter":",",
+            "defaultFS":"hdfs://node1:8020",
+            "path":"/input-c/",
+            "writeMode":"truncate",
+            "fileType":"text"
+          }
+        }
+      }
+    ]
+  }
+}
