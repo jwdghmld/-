@@ -178,7 +178,7 @@ graph LR
 ├── opt/app/airflow_workspace/dags   # Airflow 调度脚本
 │   └── bigdata.py
 |
-├── opt/app/airflow_workspace/       # DataX数据抽取配置
+├── opt/app/datax/                   # DataX数据抽取配置
 │   ├── *.json
 |
 ├── py_data/                         # Spark 核心计算逻辑
@@ -188,9 +188,9 @@ graph LR
 │   └── ads.py                       # DWS -> ADS威尔逊算法与业务指标出库
 |
 ├── 维度表/                          # ods层维度数据
-└── 原始事实表/                     
+├── 原始事实表/                     
 |   ├── shuju.py                     # 数据扩展生成器
 |   └── *.csv                        # ods原始事实数据
 |
-|—— mysql.sql                        # MySQL数据库建表语句
-|—— hive.sql                         # Hive数仓建表语句
+├── mysql.sql                        # MySQL数据库建表语句
+├── hive.sql                         # Hive数仓建表语句
