@@ -175,8 +175,9 @@ graph LR
 
 ## 📊 6. 仓库目录结构 (Repository Structure)
 ```text
-├── opt/app/airflow_workspace/dags   # Airflow 调度脚本
-│   └── bigdata.py
+├── opt/app/airflow_workspace/
+|   └──airflow/dags                 
+│           └── bigdata.py           # Airflow 调度脚本
 |
 ├── opt/app/datax/                   # DataX数据抽取配置
 │   ├── *.json
