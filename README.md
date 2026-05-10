@@ -2,7 +2,9 @@
                     
 * 本项目构建了一个企业级的电商离线数仓系统，涵盖了从原始日志采集、清洗、多层建模到最终指标导出的全流程
 * 前置要求：配置 **spark on hive**
+  
 ## 🏗️ 1. 数仓建模思路与业务背景
+
 本项目遵循 维度建模（Dimensional Modeling） 理论，采用自下而上的四层架构（ODS -> DWD -> DWS -> ADS）
 
 #### 📐 建表策略详解为了平衡查询性能与存储效率，本项目在建表时采用了以下优化手段： 
@@ -16,6 +18,7 @@
 * 分桶意义： 预先打散数据，使得在后续 DWD 和 DWS 层的 Join 或 Group By 操作中，Spark 可以实现 *Bucket-Pruning* 和 *Sort-Merge Join*，彻底消除大规模 Shuffle 带来的性能损耗
 
 #### 📁 建表详情：
+
  1. ODS 层 (原始数据层)
 - 此层保持数据原貌，主要解决外部数据（MySQL/CSV）进入 Hadoop 的问题
 
@@ -58,6 +61,7 @@
 
 
 ## ⚙️ 2. 集群环境与技术栈配置
+
 #### 本项目采用了严格的环境隔离方案，通过 Miniforge3 实现了计算引擎与调度引擎的 Python 环境解耦
 
 #### 组件版本说明：
@@ -79,6 +83,7 @@
 * Airflow 环境： Python 3.10 (利用高版本 Python 提升调度器并发效率)
 
 ## 🔄 3. 任务流转与数据血缘
+
 #### 整个 pipeline 通过 Airflow 编排，数据在各层间经历了从“脏数据”到“黄金指标”的蜕变：
 
 - **L-M-H 环节 (Linux -> MySQL -> Hive)**
@@ -95,6 +100,7 @@
   - 指标出库，供 BI 展示
 
 #### 🔁 流程图：
+
 ```mermaid
 graph LR
     %% 定义样式
@@ -136,8 +142,11 @@ graph LR
     class MySQL_App,BI out;
 ```
 ## ✅ 4. 压测报告：5000万级数据性能表现
+
 #### 🚨 注：测试所用集群为：主节点 5g 4核，两个从节点 3g 3核
+
 ### 用户行为  + 商品评论 +历史维度数据 ≈ 50,000,000 条,3G的数据
+
 通过对 YARN 内存分配的深度优化（调整 `executor.memory` 为 800M，压低 `maxPartitionBytes`），集群展现了卓越的处理效率
 
 #### ⏱️ 性能耗时清单： (总计约 22 分钟)
@@ -149,6 +158,7 @@ graph LR
 * 结果出库 (ADS -> MySQL)： 49 s (DataX 多 Channel 并发写入)
 
 #### 🎉 Airflow界面展示
+
 <img width="100%" alt="Airflow DAG展示" src="https://github.com/user-attachments/assets/d27c953c-aed5-4cdb-8ab0-7ca1c45d3398" />
 
 ## 🛡️ 5. 任务治理与任务监控
@@ -163,3 +173,21 @@ graph LR
 * 动态申请： 开启 `spark.dynamicAllocation.enabled`，根据负载自动伸缩 Executor 数量。
 * 并行度优化： 根据 YARN 虚拟核数比例调整 `spark.sql.shuffle.partitions=24`，确保 CPU 核心始终处于满载状态，绝无空闲等待。
 
+## 🏗️ 6. 仓库目录结构 (Repository Structure)
+```text
+├── opt/app/airflow_workspace/dags   # Airflow 调度脚本
+│   └── bigdata.py
+|
+├── opt/app/airflow_workspace/       # DataX数据抽取配置
+│   ├── *.json
+|
+├── py_data/                         # Spark 核心计算逻辑
+│   ├── dwd.py                       # ODS -> DWD 维度退化与 NLP 情感打标
+│   ├── dws1.py                      # DWD -> DWS 局部加盐预聚合 (防倾斜核心)
+│   ├── dws2.py                      # T-1 全量快照更新
+│   └── ads.py                       # DWS -> ADS威尔逊算法与业务指标出库
+|
+├── 维度表/                          # ods层维度数据
+└── 原始事实表/                     
+    ├── shuju.py                     # 数据扩展生成器
+    └── *.csv                        # ods原始事实数据
