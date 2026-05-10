@@ -135,7 +135,7 @@ graph LR
     class ADS ads;
     class MySQL_App,BI out;
 ```
-## ✅ 4. 压测报告：5000万级数据性能表现测试集规模： 
+## ✅ 4. 压测报告：5000万级数据性能表现
 #### 🚨 注：测试所用集群为：主节点 5g 4核，两个从节点 3g 3核
 ### 用户行为  + 商品评论 +历史维度数据 ≈ 50,000,000 条,3G的数据
 通过对 YARN 内存分配的深度优化（调整 `executor.memory` 为 800M，压低 `maxPartitionBytes`），集群展现了卓越的处理效率
@@ -149,7 +149,7 @@ graph LR
 * 结果出库 (ADS -> MySQL)： 49 s (DataX 多 Channel 并发写入)
 
 #### 🎉 Airflow界面展示
-<img width="2000" height="1000" alt="image" src="https://github.com/user-attachments/assets/d27c953c-aed5-4cdb-8ab0-7ca1c45d3398" />
+<img width="100%" alt="Airflow DAG展示" src="https://github.com/user-attachments/assets/d27c953c-aed5-4cdb-8ab0-7ca1c45d3398" />
 
 ## 🛡️ 5. 任务治理与任务监控
 
@@ -161,6 +161,5 @@ graph LR
 #### 💾 集群内存调优针对 Rocky Linux 9 与 Spark 3.5.8 的特性，进行了以下资源适配：
 
 * 动态申请： 开启 `spark.dynamicAllocation.enabled`，根据负载自动伸缩 Executor 数量。
-  
 * 并行度优化： 根据 YARN 虚拟核数比例调整 `spark.sql.shuffle.partitions=24`，确保 CPU 核心始终处于满载状态，绝无空闲等待。
 
