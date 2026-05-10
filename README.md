@@ -7,13 +7,55 @@
 
 #### 📐 建表策略详解为了平衡查询性能与存储效率，本项目在建表时采用了以下优化手段： 
 
-* 存储格式： 全线采用 ORC 格式存储。相比 TextFile，ORC 提供的列式存储和索引能提升 Spark 约 3-5 倍的查询速度，并大幅降低 HDFS 空间占用。
+* 存储格式： 除了ODS层外,全线采用 ORC 格式存储。相比 TextFile，ORC 提供的列式存储和索引能提升 Spark 约 3-5 倍的查询速度，并大幅降低 HDFS 空间占用。
   
 * 分区设置（Partitioning）： 统一以 dt (日期) 作为一级分区字段，实现动态分区加载，避免全表扫描，满足 ODS 每日增量同步的需求。
   
 * 分桶设计（Bucketing）：  在 DWD 层核心表针对 user_id 进行分桶。
   
 * 核心意义： 预先打散数据，使得在后续 DWS 层的 Join 或 Group By 操作中，Spark 可以实现 *Bucket-Pruning* 和 *Sort-Merge Join*，彻底消除大规模 Shuffle 带来的性能损耗。
+
+#### 📁 建表详情
+ 1. ODS 层 (原始数据层)
+- 此层保持数据原貌，主要解决外部数据（MySQL/CSV）进入 Hadoop 的问题。
+
+|表名          |     说明     |业务背景|文件类型|分区设置|分桶设置|
+| :-------------:|------------|-------------|-----------|--------|----------|
+|user_behavior_inc|用户行为增量表|存储每日从业务系统同步过来的原始行为日志|TEXTFILE|partition(dt='yyyyMMdd')|不分桶|
+|user_comment_inc |用户评论增量表|存储每日同步的原始用户评论文本|TEXTFILE|partition(dt='yyyyMMdd')|不分桶|
+|ods_user_face_full|用户画像全量表|存储用户职业、年龄等静态画像信息，每日覆盖|TEXTFILE|partition(dt='yyyyMMdd')|按照user_id分桶|
+|ods_category_mapping_full|商品类目映射表|存储商品 ID 与类目名称的映射关系|TEXTFILE|partition(dt='yyyyMMdd')|按照category_id分桶|
+
+  2. DWD 层 (明细数据层)
+- 此层进行数据清洗、脱敏、关联维表及 NLP 处理。
+
+|表名          |       说明       |   行为逻辑   |文件类型   |分区设置|  分桶设置 |
+| :-------------:|-----------------|-------------|------------|:--------:|----------|
+|dwd_user_behavior|行为明细事实表|关联用户画像和商品类目，去重过滤空值|    ORC    |partition(dt='yyyyMMdd')|不分桶|
+|dwd_user_comment|评论明细事实表|集成 Jieba 分词，进行情感打标（好评1/差评0）并关联维表|    ORC    |partition(dt='yyyyMMdd')|不分桶|
+
+ 3. DWS 层 (服务数据层)
+- 此层按主题进行聚合，包含“当日增量聚合”和“历史全量快照”。
+
+|表名          |说明|指标内容|文件类型|分区设置|分桶设置|
+| :-------------:|-----------------|---------------|---------|--------|----------|
+|dws_face_day|职业主题日增表|各职业在各商品类目下的 浏览、收藏、购买总数|  ORC  |partition(dt='yyyyMMdd')|不分桶|
+|dws_goods_day|商品流量日主题表|商品类目维度的全站流量统计|  ORC  |partition(dt='yyyyMMdd')|不分桶|
+|dws_goods_reputation_day|商品口碑日主题表|累计评论数、好评数、差评数|  ORC|  partition(dt='yyyyMMdd')|不分桶|
+|dws_face_full|职业*历史*主题表|各职业在各商品类目下的 浏览、收藏、购买总数|  ORC  |partition(dt='yyyyMMdd')|不分桶|
+|dws_goods_full|商品流量*历史*主题表|商品类目维度的全站流量统计|  ORC  |partition(dt='yyyyMMdd')|不分桶|
+|dws_goods_reputation_full|商品口碑*历史*主题表|累计评论数、好评数、差评数|  ORC  |partition(dt='yyyyMMdd')|不分桶|
+
+ 4. ADS 层 (应用数据层)
+- 面向业务端的最终指标表。
+  
+|     表名          |       说明       |          算法            |文件类型   |分区设置|  分桶设置 |
+|:-----------------:|-----------------|:--------------------------:|---------|--------|----------|
+|ads_goods_pop      |    当日人气榜   |加权得分排行 Top 100         |ORC     |partition(dt='yyyyMMdd')|不分桶|
+|ads_face_favorite  |    职业偏好榜   |加权得分排行 Top 3           |ORC     |partition(dt='yyyyMMdd')|不分桶|
+|ads_goods_pv_to_buy|    商品转化榜    |基于威尔逊下限算法的转化率   |ORC     |partition(dt='yyyyMMdd')|不分桶|
+|ads_goods_score    |    商品口碑榜   |基于威尔逊下限算法的好评率    |ORC     |partition(dt='yyyyMMdd')|不分桶|
+
 
 ## ⚙️ 2. 集群环境与技术栈配置本项目采用了严格的环境隔离方案，通过 Miniforge3 实现了计算引擎与调度引擎的 Python 环境解耦
 #### 组件版本说明
@@ -35,9 +77,9 @@
 ## 🔄 3. 任务流转与数据血缘整个 pipeline 通过 Airflow 编排，数据在各层间经历了从“脏数据”到“黄金指标”的蜕变
 
 1. L-M-H 环节 (Linux -> MySQL -> Hive)： 通过 DataX 将业务库数据抽取至 Hive ODS 层分区表。
-2. ODS ➔ DWD (清洗层)： * 动作： 去重、空值过滤、用户画像 Join。产出： dwd_user_behavior (行为明细表)、dwd_user_comment (评论打标表)。
+2. ODS ➔ DWD (清洗层)：  动作： 去重、空值过滤、用户画像 Join。产出： dwd_user_behavior (行为明细表)、dwd_user_comment (评论打标表)。
 3. DWD ➔ DWS (汇总层)：策略： 同时进行增量聚合（当日指标）与全量聚合（历史快照合并）。技术点： 引入局部加盐（Salting）处理计算倾斜。
-4. DWS ➔ ADS (应用层)： * 动作： 威尔逊下限算法、职业偏好加权计算。
+4. DWS ➔ ADS (应用层)：  动作： 威尔逊下限算法、职业偏好加权计算。
 5. ADS ➔ MySQL： 指标出库，供 Superset/Tableau 展示。
 
 ## ⚡ 4. 压测报告：4000万级数据性能表现测试集规模： 用户行为 (1GB) + 商品评论 (1GB) ≈ 40,000,000 条
