@@ -15,7 +15,7 @@
   
 * 分桶意义： 预先打散数据，使得在后续 DWD 和 DWS 层的 Join 或 Group By 操作中，Spark 可以实现 *Bucket-Pruning* 和 *Sort-Merge Join*，彻底消除大规模 Shuffle 带来的性能损耗
 
-#### 📁 建表详情
+#### 📁 建表详情：
  1. ODS 层 (原始数据层)
 - 此层保持数据原貌，主要解决外部数据（MySQL/CSV）进入 Hadoop 的问题
 
@@ -60,7 +60,7 @@
 ## ⚙️ 2. 集群环境与技术栈配置
 #### 本项目采用了严格的环境隔离方案，通过 Miniforge3 实现了计算引擎与调度引擎的 Python 环境解耦
 
-#### 组件版本说明
+#### 组件版本说明：
 
 |   组件   |   版本  |                说明             |   配置  |
 |:----------:|:---------:|:-------------------------------:|:---------:|
@@ -79,7 +79,7 @@
 * Airflow 环境： Python 3.10 (利用高版本 Python 提升调度器并发效率)
 
 ## 🔄 3. 任务流转与数据血缘
-#### 整个 pipeline 通过 Airflow 编排，数据在各层间经历了从“脏数据”到“黄金指标”的蜕变
+#### 整个 pipeline 通过 Airflow 编排，数据在各层间经历了从“脏数据”到“黄金指标”的蜕变：
 
 - **L-M-H 环节 (Linux -> MySQL -> Hive)**
   - 通过 DataX 将业务库数据抽取至 Hive ODS 层分区表
@@ -93,62 +93,53 @@
   - 威尔逊下限算法、职业偏好加权计算
 - **ADS ➔ MySQL**
   - 指标出库，供 BI 展示
+
+#### 流程图：
 ```mermaid
-graph TD
-    %% 定义全局节点样式
-    classDef source fill:#f9f9f9,stroke:#333,stroke-width:2px;
-    classDef ods fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;
-    classDef dwd fill:#e8f5e9,stroke:#388e3c,stroke-width:2px;
-    classDef dws fill:#fff3e0,stroke:#f57c00,stroke-width:2px;
-    classDef ads fill:#fce4ec,stroke:#c2185b,stroke-width:2px;
-    classDef export fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px;
+graph LR
+    %% 定义样式
+    classDef base fill:#f9f9f9,stroke:#333,stroke-width:1px;
+    classDef ods fill:#e1f5fe,stroke:#0288d1,stroke-width:1px;
+    classDef dwd fill:#e8f5e9,stroke:#388e3c,stroke-width:1px;
+    classDef dws fill:#fff3e0,stroke:#f57c00,stroke-width:1px;
+    classDef ads fill:#fce4ec,stroke:#c2185b,stroke-width:1px;
+    classDef out fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1px;
 
-    %% L-M-H 数据采集环节
-    subgraph Layer_1 [1. L-M-H 环节: 数据采集与接入]
-        Linux([Linux 系统流转]) --> MySQL_Biz[(业务库 MySQL)]
-        MySQL_Biz -->|DataX 定时抽取| ODS[(Hive ODS 层分区表)]
+    subgraph 采集
+        MySQL_Biz[(MySQL业务库)] -->|DataX| ODS[(Hive ODS)]
     end
 
-    %% DWD 明细层
-    subgraph Layer_2 [2. DWD 阶段: 数据清洗与宽表构建]
-        ODS -->|去重、空值过滤、用户画像 Join| DWD_Behavior[dwd_user_behavior<br>行为明细表]
-        ODS -->|数据清洗、NLP打标| DWD_Comment[dwd_user_comment<br>评论打标表]
+    subgraph 清洗
+        ODS -->|去重/过滤/Join| Behavior[dwd_user_behavior]
+        ODS -->|清洗/打标| Comment[dwd_user_comment]
     end
 
-    %% DWS 汇总层
-    subgraph Layer_3 [3. DWS 阶段: 聚合计算与倾斜治理]
-        DWD_Behavior -->|引入局部加盐 Salting 防倾斜| DWS_Engine((Spark 聚合引擎))
-        DWD_Comment -->|引入局部加盐 Salting 防倾斜| DWS_Engine
-        
-        DWS_Engine -->|当日指标计算| DWS_Inc[增量聚合表]
-        DWS_Engine -->|历史快照合并| DWS_Full[全量聚合表]
+    subgraph 汇总
+        Behavior -->|加盐聚合| DWS[(DWS 增量+全量表)]
+        Comment -->|加盐聚合| DWS
     end
 
-    %% ADS 应用层
-    subgraph Layer_4 [4. ADS 阶段: 业务模型与算法落地]
-        DWS_Inc -->|威尔逊下限算法 / 职业偏好加权| ADS_Table[ADS 业务指标表]
-        DWS_Full -->|威尔逊下限算法 / 职业偏好加权| ADS_Table
+    subgraph 应用
+        DWS -->|威尔逊/偏好加权| ADS[ADS 指标表]
     end
 
-    %% 数据出仓
-    subgraph Layer_5 [5. 数据出仓: 结果赋能业务]
-        ADS_Table -->|DataX 指标出库| MySQL_App[(应用层 MySQL)]
-        MySQL_App -->|直连渲染| BI([BI 报表 / 可视化大屏])
+    subgraph 出库
+        ADS -->|DataX| MySQL_App[(应用层MySQL)]
+        MySQL_App --> BI[BI报表]
     end
 
-    %% 应用颜色样式
-    class Linux,MySQL_Biz source;
+    class MySQL_Biz base;
     class ODS ods;
-    class DWD_Behavior,DWD_Comment dwd;
-    class DWS_Engine,DWS_Inc,DWS_Full dws;
-    class ADS_Table ads;
-    class MySQL_App,BI export;
+    class Behavior,Comment dwd;
+    class DWS dws;
+    class ADS ads;
+    class MySQL_App,BI out;
 ```
 ## ⚡ 4. 压测报告：4000万级数据性能表现测试集规模： 
 ### 用户行为  + 商品评论 +历史维度数据 ≈ 50,000,000 条,3G的数据
 通过对 YARN 内存分配的深度优化（调整 `executor.memory` 为 800M，压低 `maxPartitionBytes`），集群展现了卓越的处理效率
 
-#### ⏱️ 性能耗时清单 (总计约 19 分钟)
+#### ⏱️ 性能耗时清单： (总计约 19 分钟)
 
 * 数据抽取环节 (L-M-H)： 15 min (瓶颈在于网络 IO 与 MySQL 读取)
 * 清洗转换 (ODS -> DWD)： 60 s (Spark 向量化执行优势显现)
