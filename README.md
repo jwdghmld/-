@@ -1,28 +1,29 @@
 # 🚀 电商大数据平台：从数据采集到深度分析的全链路数仓实战
                     
-* 本项目构建了一个企业级的电商离线数仓系统，涵盖了从原始日志采集、清洗、多层建模到最终指标导出的全流程。
+* 本项目构建了一个企业级的电商离线数仓系统，涵盖了从原始日志采集、清洗、多层建模到最终指标导出的全流程
+* 前置要求：配置 **spark on hive**
 ## 🏗️ 1. 数仓建模思路与业务背景
 本项目遵循 维度建模（Dimensional Modeling） 理论，采用自下而上的四层架构（ODS -> DWD -> DWS -> ADS）
 
 #### 📐 建表策略详解为了平衡查询性能与存储效率，本项目在建表时采用了以下优化手段： 
 
-* 存储格式： 除了ODS层外,全线采用 ORC 格式存储。相比 TextFile，ORC 提供的列式存储和索引能提升 Spark 约 3-5 倍的查询速度，并大幅降低 HDFS 空间占用。
+* 存储格式： 除了ODS层外,全线采用 ORC 格式存储。相比 TextFile，ORC 提供的列式存储和索引能提升 Spark 约 3-5 倍的查询速度，并大幅降低 HDFS 空间占用
   
-* 分区设置（Partitioning）： 统一以 dt (日期) 作为一级分区字段，实现动态分区加载，避免全表扫描，满足 ODS 每日增量同步的需求。
+* 分区设置（Partitioning）： 统一以 dt (日期) 作为一级分区字段，实现动态分区加载，避免全表扫描，满足 ODS 每日增量同步的需求
   
-* 分桶设计（Bucketing）：  在 DWD 层核心表针对 user_id 进行分桶。
+* 分桶设计（Bucketing）：  在 ODS 层对维度表针对 user_id 和 category_id 进行分桶
   
-* 核心意义： 预先打散数据，使得在后续 DWS 层的 Join 或 Group By 操作中，Spark 可以实现 *Bucket-Pruning* 和 *Sort-Merge Join*，彻底消除大规模 Shuffle 带来的性能损耗。
+* 分桶意义： 预先打散数据，使得在后续 DWD 和 DWS 层的 Join 或 Group By 操作中，Spark 可以实现 *Bucket-Pruning* 和 *Sort-Merge Join*，彻底消除大规模 Shuffle 带来的性能损耗
 
 #### 📁 建表详情
  1. ODS 层 (原始数据层)
-- 此层保持数据原貌，主要解决外部数据（MySQL/CSV）进入 Hadoop 的问题。
+- 此层保持数据原貌，主要解决外部数据（MySQL/CSV）进入 Hadoop 的问题
 
 |表名          |     说明     |业务背景|文件类型|分区设置|分桶设置|
 | :-------------:|------------|-------------|-----------|--------|----------|
 |user_behavior_inc|用户行为增量表|存储每日从业务系统同步过来的原始行为日志|TEXTFILE|partition(dt='yyyyMMdd')|不分桶|
 |user_comment_inc |用户评论增量表|存储每日同步的原始用户评论文本|TEXTFILE|partition(dt='yyyyMMdd')|不分桶|
-|ods_user_face_full|用户画像全量表|存储用户职业、年龄等静态画像信息，每日覆盖|TEXTFILE|partition(dt='yyyyMMdd')|按照user_id分桶|
+|ods_user_face_full|用户画像全量表|存储用户职业、年龄等静态画像信息|TEXTFILE|partition(dt='yyyyMMdd')|按照user_id分桶|
 |ods_category_mapping_full|商品类目映射表|存储商品 ID 与类目名称的映射关系|TEXTFILE|partition(dt='yyyyMMdd')|按照category_id分桶|
 
   2. DWD 层 (明细数据层)
@@ -34,7 +35,7 @@
 |dwd_user_comment|评论明细事实表|集成 Jieba 分词，进行情感打标（好评1/差评0）并关联维表|    ORC    |partition(dt='yyyyMMdd')|不分桶|
 
  3. DWS 层 (服务数据层)
-- 此层按主题进行聚合，包含“当日增量聚合”和“历史全量快照”。
+- 此层按主题进行聚合，包含“当日增量聚合”和“历史全量快照”
 
 |表名          |说明|指标内容|文件类型|分区设置|分桶设置|
 | :-------------:|-----------------|---------------|---------|--------|----------|
@@ -46,7 +47,7 @@
 |dws_goods_reputation_full|商品口碑*历史*主题表|累计评论数、好评数、差评数|  ORC  |partition(dt='yyyyMMdd')|不分桶|
 
  4. ADS 层 (应用数据层)
-- 面向业务端的最终指标表。
+- 面向业务端的最终指标表
   
 |     表名          |       说明       |          算法            |文件类型   |分区设置|  分桶设置 |
 |:-----------------:|-----------------|:--------------------------:|---------|--------|----------|
@@ -56,17 +57,20 @@
 |ads_goods_score    |    商品口碑榜   |基于威尔逊下限算法的好评率    |ORC     |partition(dt='yyyyMMdd')|不分桶|
 
 
-## ⚙️ 2. 集群环境与技术栈配置本项目采用了严格的环境隔离方案，通过 Miniforge3 实现了计算引擎与调度引擎的 Python 环境解耦
+## ⚙️ 2. 集群环境与技术栈配置
+#### 本项目采用了严格的环境隔离方案，通过 Miniforge3 实现了计算引擎与调度引擎的 Python 环境解耦
+
 #### 组件版本说明
 
-|   组件   |   版本  |                说明             |
-|----------|---------|:-------------------------------:|
-| Rocky    | linux 9 | 企业级 RHEL 系稳定内核          |
-| Hadoop   | 3.3.6   | 分布式存储与 YARN 资源管理      |
-| Hive     | 3.1.3   | 元数据管理与 ODS 接入           |
-| Spark    | 3.5.8   | 核心计算引擎 (PySpark)          |
-| Airflow  | 2.5.1   | 全链路 DAG 任务调度             |
-| Datax    | 3.0     | 异构数据同步 (HDFS ↔ MySQL)     |
+|   组件   |   版本  |                说明             |   配置  |
+|:----------:|:---------:|:-------------------------------:|:---------:|
+| Rocky    | linux 9 | 企业级 RHEL 系稳定内核          |   系统   |
+| Hadoop   | 3.3.6   | 分布式存储与 YARN 资源管理      |  集群模式|
+| Hive     | 3.1.3   | 元数据管理与 ODS 接入           |  hive on hadoop |
+| Spark    | 3.5.8   | 核心计算引擎 (PySpark)          |  spark on yarn |
+| Airflow  | 2.5.1   | 全链路 DAG 任务调度             |  单机    |
+| Datax    | 3.0     | 异构数据同步 (HDFS ↔ MySQL)     |   单机   |
+| Mysql    |  8.0    | hive和airflow的元数据库以及业务数据库           |   单机   |
 
 
 #### 🐍 Python 运行环境管理工具： Miniforge3 (Conda 兼容)
@@ -74,17 +78,75 @@
 * Spark 环境： Python 3.9
 * Airflow 环境： Python 3.10 (利用高版本 Python 提升调度器并发效率)
 
-## 🔄 3. 任务流转与数据血缘整个 pipeline 通过 Airflow 编排，数据在各层间经历了从“脏数据”到“黄金指标”的蜕变
+## 🔄 3. 任务流转与数据血缘
+#### 整个 pipeline 通过 Airflow 编排，数据在各层间经历了从“脏数据”到“黄金指标”的蜕变
 
-1. L-M-H 环节 (Linux -> MySQL -> Hive)： 通过 DataX 将业务库数据抽取至 Hive ODS 层分区表。
-2. ODS ➔ DWD (清洗层)：  动作： 去重、空值过滤、用户画像 Join。产出： dwd_user_behavior (行为明细表)、dwd_user_comment (评论打标表)。
-3. DWD ➔ DWS (汇总层)：策略： 同时进行增量聚合（当日指标）与全量聚合（历史快照合并）。技术点： 引入局部加盐（Salting）处理计算倾斜。
-4. DWS ➔ ADS (应用层)：  动作： 威尔逊下限算法、职业偏好加权计算。
-5. ADS ➔ MySQL： 指标出库，供 Superset/Tableau 展示。
+- **L-M-H 环节 (Linux -> MySQL -> Hive)**
+  - 通过 DataX 将业务库数据抽取至 Hive ODS 层分区表
+- **ODS ➔ DWD (清洗层)**
+  - 动作： 去重、空值过滤、用户画像 Join
+  - 产出： dwd_user_behavior (行为明细表)、dwd_user_comment (评论打标表)
+- **DWD ➔ DWS (汇总层)**
+  - 策略： 同时进行增量聚合（当日指标）与全量聚合（历史快照合并）
+  - 技术点： 引入局部加盐（Salting）处理计算倾斜
+- **DWS ➔ ADS (应用层)**
+  - 威尔逊下限算法、职业偏好加权计算
+- **ADS ➔ MySQL**
+  - 指标出库，供 BI 展示
+```mermaid
+graph TD
+    %% 定义全局节点样式
+    classDef source fill:#f9f9f9,stroke:#333,stroke-width:2px;
+    classDef ods fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;
+    classDef dwd fill:#e8f5e9,stroke:#388e3c,stroke-width:2px;
+    classDef dws fill:#fff3e0,stroke:#f57c00,stroke-width:2px;
+    classDef ads fill:#fce4ec,stroke:#c2185b,stroke-width:2px;
+    classDef export fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px;
 
+    %% L-M-H 数据采集环节
+    subgraph Layer_1 [1. L-M-H 环节: 数据采集与接入]
+        Linux([Linux 系统流转]) --> MySQL_Biz[(业务库 MySQL)]
+        MySQL_Biz -->|DataX 定时抽取| ODS[(Hive ODS 层分区表)]
+    end
+
+    %% DWD 明细层
+    subgraph Layer_2 [2. DWD 阶段: 数据清洗与宽表构建]
+        ODS -->|去重、空值过滤、用户画像 Join| DWD_Behavior[dwd_user_behavior<br>行为明细表]
+        ODS -->|数据清洗、NLP打标| DWD_Comment[dwd_user_comment<br>评论打标表]
+    end
+
+    %% DWS 汇总层
+    subgraph Layer_3 [3. DWS 阶段: 聚合计算与倾斜治理]
+        DWD_Behavior -->|引入局部加盐 Salting 防倾斜| DWS_Engine((Spark 聚合引擎))
+        DWD_Comment -->|引入局部加盐 Salting 防倾斜| DWS_Engine
+        
+        DWS_Engine -->|当日指标计算| DWS_Inc[增量聚合表]
+        DWS_Engine -->|历史快照合并| DWS_Full[全量聚合表]
+    end
+
+    %% ADS 应用层
+    subgraph Layer_4 [4. ADS 阶段: 业务模型与算法落地]
+        DWS_Inc -->|威尔逊下限算法 / 职业偏好加权| ADS_Table[ADS 业务指标表]
+        DWS_Full -->|威尔逊下限算法 / 职业偏好加权| ADS_Table
+    end
+
+    %% 数据出仓
+    subgraph Layer_5 [5. 数据出仓: 结果赋能业务]
+        ADS_Table -->|DataX 指标出库| MySQL_App[(应用层 MySQL)]
+        MySQL_App -->|直连渲染| BI([BI 报表 / 可视化大屏])
+    end
+
+    %% 应用颜色样式
+    class Linux,MySQL_Biz source;
+    class ODS ods;
+    class DWD_Behavior,DWD_Comment dwd;
+    class DWS_Engine,DWS_Inc,DWS_Full dws;
+    class ADS_Table ads;
+    class MySQL_App,BI export;
+```
 ## ⚡ 4. 压测报告：4000万级数据性能表现测试集规模： 
 ### 用户行为  + 商品评论 +历史维度数据 ≈ 50,000,000 条,3G的数据
-通过对 YARN 内存分配的深度优化（调整 `executor.memory` 为 800M，压低 `maxPartitionBytes`），集群展现了卓越的处理效率。
+通过对 YARN 内存分配的深度优化（调整 `executor.memory` 为 800M，压低 `maxPartitionBytes`），集群展现了卓越的处理效率
 
 #### ⏱️ 性能耗时清单 (总计约 19 分钟)
 
