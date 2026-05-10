@@ -173,7 +173,7 @@ graph LR
 * 动态申请： 开启 `spark.dynamicAllocation.enabled`，根据负载自动伸缩 Executor 数量。
 * 并行度优化： 根据 YARN 虚拟核数比例调整 `spark.sql.shuffle.partitions=24`，确保 CPU 核心始终处于满载状态，绝无空闲等待。
 
-## 🏗️ 6. 仓库目录结构 (Repository Structure)
+## 📊 6. 仓库目录结构 (Repository Structure)
 ```text
 ├── opt/app/airflow_workspace/dags   # Airflow 调度脚本
 │   └── bigdata.py
@@ -189,5 +189,8 @@ graph LR
 |
 ├── 维度表/                          # ods层维度数据
 └── 原始事实表/                     
-    ├── shuju.py                     # 数据扩展生成器
-    └── *.csv                        # ods原始事实数据
+|   ├── shuju.py                     # 数据扩展生成器
+|   └── *.csv                        # ods原始事实数据
+|
+|—— mysql.sql                        # MySQL数据库建表语句
+|—— hive.sql                         # Hive数仓建表语句
