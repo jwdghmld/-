@@ -1,24 +1,25 @@
-use bigdata;
+CREATE DATABASE IF NOT EXISTS bigdata;
+USE bigdata;
 #用户行为日增表，只保留每日最新数据
-create table behavior_daily (
-    user_id int comment "用户id",
-    goods_id int comment "商品具体id",
-    category_id int comment "商品品类id",
-    behavior char(5) comment "用户行为",
-    `timestamp` int comment "uninx code时间",
-    sex int comment "性别",
-    address varchar(20) comment "省份",
-    device varchar(20) comment "手机类型",
-    price int comment "商品价格",
-    amount int comment "购买数量"
-) comment "用户行为表";
+CREATE TABLE behavior_daily (
+    user_id int COMMENT "用户id",
+    goods_id int COMMENT "商品具体id",
+    category_id int COMMENT "商品品类id",
+    behavior char(5) COMMENT "用户行为",
+    `timestamp` int COMMENT "uninx code时间",
+    sex int COMMENT "性别",
+    address varchar(20) COMMENT "省份",
+    device varchar(20) COMMENT "手机类型",
+    price int COMMENT "商品价格",
+    amount int COMMENT "购买数量"
+) COMMENT "用户行为表";
 #商品评论表，只保留每日最新数据
-create table comment_daily (
-    user_id int comment "用户id",
-    goods_id int comment "商品具体id",
-    category_id int comment "商品品类id",
-    `comment` varchar(1000) comment "用户评论"
-) comment "用户评论表";
+CREATE TABLE comment_daily (
+    user_id int COMMENT "用户id",
+    goods_id int COMMENT "商品具体id",
+    category_id int COMMENT "商品品类id",
+    `comment` varchar(1000) COMMENT "用户评论"
+) COMMENT "用户评论表";
 
 
 -- bigdata
