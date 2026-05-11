@@ -35,7 +35,7 @@
             "fileName":"beha",
             "fieldDelimiter":",",
             "defaultFS":"hdfs://node1:8020",
-            "path":"/input-b/",
+            "path":"/user/hive/warehouse/ods.db/user_behavior_tmp/",
             "writeMode":"truncate",
             "fileType":"text"
           }
