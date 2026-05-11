@@ -14,7 +14,7 @@ if __name__ == "__main__":
         .config("spark.num.executors",2)\
         .config("spark.executor.cores",3)\
         .config("spark.default.parallelism",12) \
-        .config("spark.sql.files.maxPartitionBytes", "根据实际文件数据动态调整") \
+        .config("spark.sql.files.maxPartitionBytes", "4194304") \
         .config("spark.executor.memory","800m")\
         .config("spark.yarn.am.memory","512m")\
         .config("hive.exec.dynamic.partition", "true") \
@@ -34,7 +34,8 @@ if __name__ == "__main__":
         z = 1.96  # 95% 置信度
         phat = pos / total
         # 威尔逊公式
-        numerator = phat + (z ** 2) / (2 * total) - z * math.sqrt((phat * (1 - phat)) / total + (z ** 2) / (4 * total ** 2))
+        inner_sqrt = (phat * (1 - phat)) / total + (z ** 2) / (4 * total ** 2)
+        numerator = phat + (z ** 2) / (2 * total) - z * math.sqrt(max(0.0, inner_sqrt))
         denominator = 1 + (z ** 2) / total
         return round(numerator / denominator, 4)
 
