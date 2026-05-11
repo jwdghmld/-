@@ -9,7 +9,7 @@ from airflow.operators.email import EmailOperator
 default = {
     "owner": "airflow",
     "depends_on_past": False,
-    "email": ["2517749950@qq.com"],
+    "email": ["你的邮箱"],
     "start_date": datetime(2026, 5, 7),
     "email_on_failure": True,
     "email_on_retry": False,
@@ -106,10 +106,10 @@ with DAG('bigdata', default_args=default, schedule_interval="@daily", catchup=Fa
 
     email = EmailOperator(
     	task_id="eamil",
-    	to='2517749950@qq.com',
-    	subject=' renji ',
-    	html_content='<h1> wudi </h1>',
-    	cc='2517749950@qq.com',
+    	to='你的邮箱',
+    	subject='主题 ',
+    	html_content='<h1> 实际内容 </h1>',
+    	cc='你的邮箱',
     	dag=dag)
 
     t1_to_mysql1 >> t2_hive1_ods >> t1_to_mysql2 >> t2_hive2_ods >> t3_spark_dwd >> t4_spark_dws1 >> t4_spark_dws2 >> t5_spark_dwd >> t6_hive_to_mysql >> email
