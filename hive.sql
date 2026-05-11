@@ -17,6 +17,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS ods.user_behavior_inc (
 )
 COMMENT '用户行为流水表'
 PARTITIONED BY (dt STRING COMMENT '日期分区,格式YYYYMMDD')
+CLUSTERED BY (user_id) SORTED BY (user_id) INTO 8 BUCKETS
 ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
 STORED AS TEXTFILE;
 
@@ -28,6 +29,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS ods.user_comment_inc (
     `comment`     STRING COMMENT '评论内容'
 )
 PARTITIONED BY (dt STRING)
+CLUSTERED BY (category_id) SORTED BY (category_id) INTO 8 BUCKETS
 ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
 STORED AS TEXTFILE;
 
@@ -37,7 +39,7 @@ CREATE TABLE IF NOT EXISTS ods.ods_user_face_full (
     face    STRING COMMENT '画像/职业标签'
 )
 COMMENT '用户画像维表'
-CLUSTERED BY (user_id) INTO 8 BUCKETS
+CLUSTERED BY (user_id) SORTED BY (user_id)  INTO 8 BUCKETS
 STORED AS ORC;
 
 -- 商品类目维表 (按 category_id 分桶)
@@ -47,7 +49,7 @@ CREATE TABLE IF NOT EXISTS ods.ods_category_mapping_full (
     category_label STRING COMMENT '类目名称'
 )
 COMMENT '商品类目映射表'
-CLUSTERED BY (category_id) INTO 4 BUCKETS
+CLUSTERED BY (category_id) SORTED BY (category_id) INTO 4 BUCKETS
 STORED AS ORC;
 
 --ods维度表---全量作为中转
