@@ -18,6 +18,16 @@
   
 * 分桶意义： 预先打散数据，使得在后续 DWD 和 DWS 层的 Join 或 Group By 操作中，Spark 可以实现 *Bucket-Pruning* 和 *Sort-Merge Join*，彻底消除大规模 Shuffle 带来的性能损耗
 
+#### 📖 业务背景与目标
+
+- 精准营销与用户画像：通过分析不同职业人群的消费偏好（**ads_face_favorite**），为运营团队提供决策支持，实现针对不同职业标签（如学生、白领、工人）的个性化商品推送，提升营销活动的点击率与转化率
+
+- 供应链与选品优化：基于当日人气榜（**ads_goods_pop**）与商品转化榜（**ads_goods_pv_to_buy**），实时感知市场热度波动。帮助供应链团队识别高潜力商品与爆款趋势，从而优化库存周转，减少冷门商品的库存积压
+
+- 科学的品牌口碑管理：引入威尔逊置信区间下限算法（**ads_goods_score**），通过数学模型消除小样本偏差，构建公平、公信的商品评价体系，增强平台用户信任度
+
+- 全链路消费行为洞察：利用 NLP 技术对千万级评论进行情感打标（**dwd_user_comment**），帮助业务方快速捕捉用户对商品质量及物流服务的真实反馈，驱动服务链路的迭代优化
+
 #### 📁 建表详情：
 
  1. ODS 层 (原始数据层)
@@ -46,9 +56,9 @@
 |dws_face_day|职业主题日增表|各职业在各商品类目下的 浏览、收藏、购买总数|  ORC  |partition(dt='yyyyMMdd')|不分桶|
 |dws_goods_day|商品流量日主题表|商品类目维度的全站流量统计|  ORC  |partition(dt='yyyyMMdd')|不分桶|
 |dws_goods_reputation_day|商品口碑日主题表|累计评论数、好评数、差评数|  ORC|  partition(dt='yyyyMMdd')|不分桶|
-|dws_face_full|职业*历史*主题表|各职业在各商品类目下的 浏览、收藏、购买总数|  ORC  |partition(dt='yyyyMMdd')|不分桶|
-|dws_goods_full|商品流量*历史*主题表|商品类目维度的全站流量统计|  ORC  |partition(dt='yyyyMMdd')|不分桶|
-|dws_goods_reputation_full|商品口碑*历史*主题表|累计评论数、好评数、差评数|  ORC  |partition(dt='yyyyMMdd')|不分桶|
+|dws_face_full|职业**历史**主题表|各职业在各商品类目下的 浏览、收藏、购买总数|  ORC  |partition(dt='yyyyMMdd')|不分桶|
+|dws_goods_full|商品流量**历史**主题表|商品类目维度的全站流量统计|  ORC  |partition(dt='yyyyMMdd')|不分桶|
+|dws_goods_reputation_full|商品口碑**历史**主题表|累计评论数、好评数、差评数|  ORC  |partition(dt='yyyyMMdd')|不分桶|
 
  4. ADS 层 (应用数据层)
 - 面向业务端的最终指标表
@@ -144,9 +154,9 @@ graph LR
 ```
 ## ✅ 4. 压测报告：5000万级数据性能表现
 
-#### 🚨 注：测试所用集群为：主节点 5g 4核，两个从节点 3g 4核
+#### 🚨 注：测试所用集群配置为：主节点 5g+4核，两个从节点 3g+4核
 
-### 用户行为  + 商品评论 +历史维度数据 ≈ 50,000,000 条,3G的数据
+### 用户日行为  + 商品日评论 +历史维度数据 ≈ 50,000,000 条,3G的数据
 
 通过对 YARN 内存分配的深度优化（调整 `executor.memory` 为 800M，压低 `maxPartitionBytes`），集群展现了卓越的处理效率
 
@@ -155,14 +165,14 @@ graph LR
 * 数据抽取环节 (L-M-H)： 15 min (瓶颈在于网络 IO 与 MySQL 读取)
 * 清洗转换 (ODS -> DWD)： 4 m 14 s (Spark 向量化执行优势显现)
 * 数据聚合 (DWD -> DWS)： 1 m 30 s (加盐策略成功化解数据倾斜)
-* 深度建模 (DWS -> ADS)： 39 s (ORC 分桶读取加速查询)
+* 深度建模 (DWS -> ADS)： 39 s (ORC 读取加速查询)
 * 结果出库 (ADS -> MySQL)： 49 s (DataX 多 Channel 并发写入)
 
 #### 🎉 Airflow界面展示
 
 <img width="100%" alt="Airflow DAG展示" src="https://github.com/user-attachments/assets/d27c953c-aed5-4cdb-8ab0-7ca1c45d3398" />
 
-## 🛡️ 5. 任务治理与任务监控
+## 🛡️ 5. 任务监控与任务治理
 
 #### 📧 邮件预警系统在 Airflow 中通过 EmailOperator 与 default_args 深度集成：
 
