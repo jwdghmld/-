@@ -59,7 +59,7 @@ with DAG('bigdata', default_args=default, schedule_interval="@daily", catchup=Fa
     	hive_cli_conn_id="hive",
     	hql="""
                 use ods;
-                insert into table user_comment_inc partition(dt='{{ ds_nodash }}')
+                insert overwrite table user_comment_inc partition(dt='{{ ds_nodash }}')
                 select user_id,goods_id,category_id,`comment` from user_comment_tmp';
                 """,
     	dag=dag)
