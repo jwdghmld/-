@@ -14,7 +14,7 @@
   
 * 分区设置（Partitioning）： 统一以 dt (日期) 作为一级分区字段，实现动态分区加载，避免全表扫描，满足 ODS 每日增量同步的需求
   
-* 分桶设计（Bucketing）：  在 ODS 层对表针对 user_id 和 category_id 进行有序分桶,便于后续的DWD聚合时触发 **分桶裁剪** 和 **SMB**,极大减少Shuffle带来的性能消耗
+* 分桶设计（Bucketing）：  在 ODS 层对表针对 user_id 和 category_id 进行有序分桶,便于后续的 DWD join 操作时触发 **分桶裁剪** 和 **SMB**,极大减少Shuffle带来的性能消耗
   
 
 #### 📖 业务背景与目标
