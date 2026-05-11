@@ -49,9 +49,8 @@ with DAG('bigdata', default_args=default, schedule_interval="@daily", catchup=Fa
         hive_cli_conn_id="hive",
         hql="""  
                 use ods;
-                load data inpath '/input-b/*' overwrite into table  user_behavior_tmp partition(dt='{{ ds_nodash }}');
                 insert overwrite table ods.user_behavior_inc partition(dt='{{ ds_nodash }}') 
-                select user_id,goods_id,category_id,behavior,`timestamp`,sex,address,device,price,amount,dt from ods.user_behavior_tmp where dt ='{{ ds_nodash }}';
+                select user_id,goods_id,category_id,behavior,`timestamp`,sex,address,device,price,amount from ods.user_behavior_tmp';
             """,
         dag=dag)
 
@@ -60,9 +59,8 @@ with DAG('bigdata', default_args=default, schedule_interval="@daily", catchup=Fa
     	hive_cli_conn_id="hive",
     	hql="""
                 use ods;
-                load data inpath '/input-c/*' overwrite into table  user_comment_tmp partition(dt='{{ ds_nodash }}');
                 insert into table user_comment_inc partition(dt='{{ ds_nodash }}')
-                select user_id,goods_id,category_id,`comment`,dt from user_comment_tmp where dt = '{{ ds_nodash }}';
+                select user_id,goods_id,category_id,`comment` from user_comment_tmp';
                 """,
     	dag=dag)
 
