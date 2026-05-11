@@ -50,7 +50,7 @@ with DAG('bigdata', default_args=default, schedule_interval="@daily", catchup=Fa
         hql="""  
                 use ods;
                 insert overwrite table ods.user_behavior_inc partition(dt='{{ ds_nodash }}') 
-                select user_id,goods_id,category_id,behavior,`timestamp`,sex,address,device,price,amount from ods.user_behavior_tmp';
+                select user_id,goods_id,category_id,behavior,`timestamp`,sex,address,device,price,amount from ods.user_behavior_tmp;
             """,
         dag=dag)
 
@@ -60,7 +60,7 @@ with DAG('bigdata', default_args=default, schedule_interval="@daily", catchup=Fa
     	hql="""
                 use ods;
                 insert overwrite table user_comment_inc partition(dt='{{ ds_nodash }}')
-                select user_id,goods_id,category_id,`comment` from user_comment_tmp';
+                select user_id,goods_id,category_id,`comment` from user_comment_tmp;
                 """,
     	dag=dag)
 
