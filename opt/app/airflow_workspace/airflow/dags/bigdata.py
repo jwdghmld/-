@@ -47,13 +47,21 @@ with DAG('bigdata', default_args=default, schedule_interval="@daily", catchup=Fa
     t2_hive1_ods = HiveOperator(
         task_id="ODS1",
         hive_cli_conn_id="hive",
-        hql="""  use ods;load data inpath '/input-b/*' overwrite into table  user_behavior_inc partition(dt='{{ ds_nodash }}');""",
+        hql="""  
+                use ods;
+                load data inpath '/input-b/*' overwrite into table  user_behavior_tmp partition(dt='{{ ds_nodash }}');
+                insert into table ods.user_behavior_inc select * from ods.user_behavior_tmp where dt ='{{ ds_nodash }}';
+            """,
         dag=dag)
 
     t2_hive2_ods = HiveOperator(
     	task_id="ODS2",
     	hive_cli_conn_id="hive",
-    	hql="""use ods;load data inpath '/input-c/*' overwrite into table  user_comment_inc partition(dt='{{ ds_nodash }}');""",
+    	hql="""
+                use ods;
+                load data inpath '/input-c/*' overwrite into table  user_comment_tmp partition(dt='{{ ds_nodash }}');
+                insert into table user_comment_inc select * from user_comment_tmp where dt = '{{ ds_nodash }}';
+                """,
     	dag=dag)
 
     # 写入到DWD
