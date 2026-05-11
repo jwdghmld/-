@@ -10,7 +10,7 @@
 #### 📐 建表策略详解
 为了平衡查询性能与存储效率，本项目在建表时采用了以下优化手段： 
 
-* 存储格式： 除了ODS层外,全线采用 ORC 格式存储。相比 TextFile，ORC 提供的列式存储和索引能提升 Spark 约 3-5 倍的查询速度，并大幅降低 HDFS 空间占用
+* 存储格式： 除 ODS 层的临时表外，全线采用 ORC 格式存储。相比 TextFile，ORC 提供的列式存储和索引能提升 Spark 约 3-5 倍的查询速度，并大幅降低 HDFS 空间占用
   
 * 分区设置（Partitioning）： 统一以 dt (日期) 作为一级分区字段，实现动态分区加载，避免全表扫描，满足 ODS 每日增量同步的需求
   
@@ -37,10 +37,10 @@
 | :-------------:|------------|-------------|-----------|--------|----------|
 |user_behavior_tmp|用户行为增量**临时**表|存储每日从业务系统同步过来的原始行为日志|TEXTFILE|不分区|不分桶|
 |user_comment_tmp |用户评论增量**临时**表|存储每日同步的原始用户评论文本|TEXTFILE|不分区|不分桶|
-|user_behavior_inc|用户行为增量表|存储每日从业务系统同步过来的原始行为日志|ORC|partition(dt='yyyyMMdd')|按照user_id有序分桶|
+|user_behavior_inc|用户行为增量表|存储每日从业务系统同步过来的原始行为日志|ORC|partition(dt='yyyyMMdd')|按照user_id和category_id有序分桶|
 |user_comment_inc |用户评论增量表|存储每日同步的原始用户评论文本|ORC|partition(dt='yyyyMMdd')|按照category_id有序分桶|
-|ods_user_face_full|用户画像全量表|存储用户职业、年龄等静态画像信息|TEXTFILE|partition(dt='yyyyMMdd')|按照user_id有序分桶|
-|ods_category_mapping_full|商品类目映射表|存储商品 ID 与类目名称的映射关系|TEXTFILE|partition(dt='yyyyMMdd')|按照category_id有序分桶|
+|ods_user_face_full|用户画像全量表|存储用户职业、年龄等静态画像信息|ORC|partition(dt='yyyyMMdd')|按照user_id有序分桶|
+|ods_category_mapping_full|商品类目映射表|存储商品 ID 与类目名称的映射关系|ORC|partition(dt='yyyyMMdd')|按照category_id有序分桶|
 
   2. DWD 层 (明细数据层)
 - 此层进行数据清洗、脱敏、关联维表及 NLP 处理。
@@ -162,17 +162,17 @@ graph LR
 
 通过对 YARN 内存分配的深度优化（调整 `executor.memory` 为 800M，压低 `maxPartitionBytes`），集群展现了卓越的处理效率
 
-#### ⏱️ 性能耗时清单： (总计约 22 分钟)
+#### ⏱️ 性能耗时清单： (总计约 18 分钟)
 
-* 数据抽取环节 (L-M-H)： 15 min (瓶颈在于网络 IO 与 MySQL 读取) 
-* 清洗转换 (ODS -> DWD)： 4 m 14 s (Spark 向量化执行优势显现)
-* 数据聚合 (DWD -> DWS)： 1 m 30 s (加盐策略成功化解数据倾斜)
-* 深度建模 (DWS -> ADS)： 39 s (ORC 读取加速查询)
-* 结果出库 (ADS -> MySQL)： 49 s (DataX 多 Channel 并发写入)
+* 数据抽取环节 (L-M-H)： 14 min    (其中ODS数据加载 2 m,瓶颈在于网络 IO 与 MySQL 读取) 
+* 清洗转换 (ODS -> DWD)： 1 m 17 s (Spark 向量化执行优势显现)
+* 数据聚合 (DWD -> DWS)： 1 m 36 s (加盐策略成功化解数据倾斜)
+* 深度建模 (DWS -> ADS)： 40 s     (ORC 读取加速查询)
+* 结果出库 (ADS -> MySQL)： 49 s   (DataX 多 Channel 并发写入)
 
 #### 🎉 Airflow界面展示
 
-<img width="100%" alt="Airflow DAG展示" src="https://github.com/user-attachments/assets/d27c953c-aed5-4cdb-8ab0-7ca1c45d3398" />
+<img width="100%" alt="Airflow DAG展示" src="https://github.com/user-attachments/assets/c009618b-5444-4a01-930a-82ceb04a589d" />
 
 ## 🛡️ 5. 任务监控与任务治理
 
