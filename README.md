@@ -14,9 +14,8 @@
   
 * 分区设置（Partitioning）： 统一以 dt (日期) 作为一级分区字段，实现动态分区加载，避免全表扫描，满足 ODS 每日增量同步的需求
   
-* 分桶设计（Bucketing）：  在 ODS 层对维度表针对 user_id 和 category_id 进行分桶
+* 分桶设计（Bucketing）：  在 ODS 层对表针对 user_id 和 category_id 进行有序分桶,便于后续的DWD聚合时触发 **分桶裁剪** 和 **SMB**,极大减少Shuffle带来的性能消耗
   
-* 分桶意义： 预先打散数据，使得在后续 DWD 和 DWS 层的 Join 或 Group By 操作中，Spark 可以实现 *Bucket-Pruning* 和 *Sort-Merge Join*，彻底消除大规模 Shuffle 带来的性能损耗
 
 #### 📖 业务背景与目标
 
@@ -32,11 +31,14 @@
 
  1. ODS 层 (原始数据层)
 - 此层保持数据原貌，主要解决外部数据（MySQL/CSV）进入 Hadoop 的问题
+- 通过**临时表**对 日增表 进行 **insert** 以实现动态分区和分桶
 
 |表名          |     说明     |业务背景|文件类型|分区设置|分桶设置|
 | :-------------:|------------|-------------|-----------|--------|----------|
-|user_behavior_inc|用户行为增量表|存储每日从业务系统同步过来的原始行为日志|TEXTFILE|partition(dt='yyyyMMdd')|按照user_id有序分桶|
-|user_comment_inc |用户评论增量表|存储每日同步的原始用户评论文本|TEXTFILE|partition(dt='yyyyMMdd')|按照category_id有序分桶|
+|user_behavior_tmp|用户行为增量**临时**表|存储每日从业务系统同步过来的原始行为日志|TEXTFILE|partition(dt='yyyyMMdd')|不分桶|
+|user_comment_tmp |用户评论增量**临时**表|存储每日同步的原始用户评论文本|TEXTFILE|partition(dt='yyyyMMdd')|不分桶|
+|user_behavior_inc|用户行为增量表|存储每日从业务系统同步过来的原始行为日志|ORC|partition(dt='yyyyMMdd')|按照user_id有序分桶|
+|user_comment_inc |用户评论增量表|存储每日同步的原始用户评论文本|ORC|partition(dt='yyyyMMdd')|按照category_id有序分桶|
 |ods_user_face_full|用户画像全量表|存储用户职业、年龄等静态画像信息|TEXTFILE|partition(dt='yyyyMMdd')|按照user_id有序分桶|
 |ods_category_mapping_full|商品类目映射表|存储商品 ID 与类目名称的映射关系|TEXTFILE|partition(dt='yyyyMMdd')|按照category_id有序分桶|
 
@@ -98,7 +100,7 @@
 #### 整个 pipeline 通过 Airflow 编排，数据在各层间经历了从“脏数据”到“黄金指标”的蜕变：
 
 - **L-M-H 环节 (Linux -> MySQL -> Hive)**
-  - 通过 DataX 将业务库数据抽取至 Hive ODS 层分区表
+  - 通过 DataX 将业务库数据抽取至 Hive ODS 层分桶分区表
 - **ODS ➔ DWD (清洗层)**
   - 动作： 去重、空值过滤、用户画像 Join
   - 产出： dwd_user_behavior (行为明细表)、dwd_user_comment (评论打标表)
