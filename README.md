@@ -102,7 +102,7 @@
 - **L-M-H 环节 (Linux -> MySQL -> Hive)**
   - 通过 DataX 将业务库数据抽取至 Hive ODS 层分桶分区表
 - **ODS ➔ DWD (清洗层)**
-  - 动作： 去重、空值过滤、用户画像 Join
+  - 动作： 去重、空值过滤、用户画像 Join、评论转化，广播变量
   - 产出： dwd_user_behavior (行为明细表)、dwd_user_comment (评论打标表)
 - **DWD ➔ DWS (汇总层)**
   - 策略： 同时进行增量聚合（当日指标）与全量聚合（历史快照合并）
