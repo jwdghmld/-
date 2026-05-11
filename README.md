@@ -35,8 +35,8 @@
 
 |表名          |     说明     |业务背景|文件类型|分区设置|分桶设置|
 | :-------------:|------------|-------------|-----------|--------|----------|
-|user_behavior_tmp|用户行为增量**临时**表|存储每日从业务系统同步过来的原始行为日志|TEXTFILE|partition(dt='yyyyMMdd')|不分桶|
-|user_comment_tmp |用户评论增量**临时**表|存储每日同步的原始用户评论文本|TEXTFILE|partition(dt='yyyyMMdd')|不分桶|
+|user_behavior_tmp|用户行为增量**临时**表|存储每日从业务系统同步过来的原始行为日志|TEXTFILE|不分区|不分桶|
+|user_comment_tmp |用户评论增量**临时**表|存储每日同步的原始用户评论文本|TEXTFILE|不分区|不分桶|
 |user_behavior_inc|用户行为增量表|存储每日从业务系统同步过来的原始行为日志|ORC|partition(dt='yyyyMMdd')|按照user_id有序分桶|
 |user_comment_inc |用户评论增量表|存储每日同步的原始用户评论文本|ORC|partition(dt='yyyyMMdd')|按照category_id有序分桶|
 |ods_user_face_full|用户画像全量表|存储用户职业、年龄等静态画像信息|TEXTFILE|partition(dt='yyyyMMdd')|按照user_id有序分桶|
