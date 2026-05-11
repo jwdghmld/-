@@ -38,34 +38,26 @@ if __name__ == "__main__":
     #评论大表
     user_comment = user_com.join(user_face,on='user_id',how='left').join(goods,on=['category_id'],how='left')
 
-    #评论转化
+    #评论转化--可扩展
+    positive_words = {"好", "不错", "喜欢", "清晰", "快", "赞", "满意", "值得", "很多", "好吃"}
+    negative_words = {"差", "坏", "慢", "卡", "失望", "退货", "垃圾", "不行", "扔", "乱", "难吃", "故障", "说法", "难","返修", "变质"}
+    #创建广播变量
+    broadcast_pos = spark.sparkContext.broadcast(positive_words)
+    broadcast_neg = spark.sparkContext.broadcast(negative_words)
+
     def analyze_sentiment(comment):
         if not comment:
             return 0
-        #自定义词典---基本
-        positive_words = {
-    		"好", "不错", "喜欢", "清晰", "快", "赞", "满意", "值得", "很多", "好吃",
-   	 	"优秀", "完美", "精致", "实惠", "好用", "耐用", "方便", "舒服", "好看",
-    		"漂亮", "高端", "大气", "时尚", "顺滑", "流畅", "省电", "安静", "小巧",
-    		"轻便", "强劲", "大屏", "鲜艳", "逼真", "灵敏", "工整", "细致", "贴心",
-    		"惊喜", "超值", "推荐", "回购", "放心", "靠谱", "周到", "热情", "专业",
-    		"新鲜", "厚实", "柔软", "保暖", "透气"
-		}
-        negative_words = {
-    		"差", "坏", "慢", "卡", "失望", "退货", "垃圾", "不行", "扔", "乱",
-    		"难吃", "故障", "说法", "难", "返修", "变质", "差评", "坑", "假",
-    		"破损", "划痕", "掉色", "缩水", "起球", "变形", "异味", "噪音", "发热",
-    		"迟钝", "模糊", "闪退", "死机", "卡顿", "延迟", "耗电", "漏水", "漏气",
-    		"粗糙", "劣质", "廉价", "敷衍", "蛮横", "推诿", "过期", "发霉", "生锈",
-    		"开裂", "脱落", "刺激", "过敏", "短命"
-		}
+        #引入词典
+        pos_words = broadcast_pos.value
+        neg_words = broadcast_neg.value
         # 词频统计
         words = jieba.lcut(comment)
         score = 0
         for word in words:
-            if word in positive_words:
+            if word in pos_words:
                 score += 1
-            elif word in negative_words:
+            elif word in neg_words:
                 score -= 1
         # 打标
         if score >=1 :
