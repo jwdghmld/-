@@ -1,7 +1,44 @@
+--初始数据表  用于临时存储数据
+
 --1.建立ODS
 drop database if exists ods cascade;
+
 CREATE DATABASE IF NOT EXISTS ods;
 USE ods;
+
+-- =======临时数据表======
+
+-- 用于分桶和分区
+
+-- 1. 用户行为临时表
+CREATE EXTERNAL TABLE IF NOT EXISTS ods.user_behavior_tmp (
+    user_id     STRING COMMENT '用户ID',
+    goods_id    STRING COMMENT '商品ID',
+    category_id STRING COMMENT '类目ID',
+    behavior    STRING COMMENT '行为类型:pv,cart,fav,buy',
+  `timestamp`   BIGINT COMMENT '行为时间戳',
+    sex         STRING COMMENT '性别',
+    address     STRING COMMENT '地域',
+    device      STRING COMMENT '设备',
+    price       DECIMAL(10,2) COMMENT '单价',
+    amount      INT COMMENT '数量'
+)
+COMMENT '用户行为临时流水表'
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+STORED AS TEXTFILE;
+
+-- 2. 评论事实临时表
+CREATE EXTERNAL TABLE IF NOT EXISTS ods.user_comment_tmp(
+    user_id       STRING COMMENT '用户ID',
+    goods_id      STRING COMMENT '商品ID',
+    category_id   STRING COMMENT '类目ID',
+    `comment`     STRING COMMENT '评论内容'
+)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+STORED AS TEXTFILE;
+
+-- ======实际事实表，动态分区和分桶======
+
 -- 用户行为事实表
 CREATE EXTERNAL TABLE IF NOT EXISTS ods.user_behavior_inc (
     user_id     STRING COMMENT '用户ID',
@@ -19,7 +56,7 @@ COMMENT '用户行为流水表'
 PARTITIONED BY (dt STRING COMMENT '日期分区,格式YYYYMMDD')
 CLUSTERED BY (user_id) SORTED BY (user_id) INTO 8 BUCKETS
 ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
-STORED AS TEXTFILE;
+STORED AS ORC;
 
 --评论事实表
 CREATE EXTERNAL TABLE IF NOT EXISTS ods.user_comment_inc (
@@ -31,7 +68,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS ods.user_comment_inc (
 PARTITIONED BY (dt STRING)
 CLUSTERED BY (category_id) SORTED BY (category_id) INTO 8 BUCKETS
 ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
-STORED AS TEXTFILE;
+STORED AS ORC;
 
 -- 用户画像维表 (按 user_id 分桶)
 CREATE TABLE IF NOT EXISTS ods.ods_user_face_full (
