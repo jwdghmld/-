@@ -29,7 +29,7 @@
             "fileName":"comment",
             "fieldDelimiter":",",
             "defaultFS":"hdfs://node1:8020",
-            "path":"/user/hive/warehouse/ods.db/user_comment_tmp/",
+            "path":"/input-c/",
             "writeMode":"truncate",
             "fileType":"text"
           }
