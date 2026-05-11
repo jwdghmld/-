@@ -44,25 +44,12 @@ with DAG('bigdata', default_args=default, schedule_interval="@daily", catchup=Fa
         dag=dag)
 
     # 将数据写入到ODS层
-    t2_hive1_ods = HiveOperator(
-        task_id="ODS1",
-        hive_cli_conn_id="hive",
-        hql="""  
-                use ods;
-                insert overwrite table ods.user_behavior_inc partition(dt='{{ ds_nodash }}') 
-                select user_id,goods_id,category_id,behavior,`timestamp`,sex,address,device,price,amount from ods.user_behavior_tmp;
-            """,
-        dag=dag)
-
-    t2_hive2_ods = HiveOperator(
-    	task_id="ODS2",
-    	hive_cli_conn_id="hive",
-    	hql="""
-                use ods;
-                insert overwrite table user_comment_inc partition(dt='{{ ds_nodash }}')
-                select user_id,goods_id,category_id,`comment` from user_comment_tmp;
-                """,
-    	dag=dag)
+    t2_to_ods = BashOperator(
+    		task_id='ods',
+    		bash_command="""
+       	 	/opt/app/spark-3.5.8/bin/spark-submit --master yarn --driver-memory 1g /home/dage/py_data/to_hdfs.py {{ ds_nodash }}
+        	""",
+    		dag=dag)
 
     # 写入到DWD
     t3_spark_dwd = BashOperator(
@@ -120,4 +107,4 @@ with DAG('bigdata', default_args=default, schedule_interval="@daily", catchup=Fa
     	cc='你的邮箱',
     	dag=dag)
 
-    t1_to_mysql1 >> t2_hive1_ods >> t1_to_mysql2 >> t2_hive2_ods >> t3_spark_dwd >> t4_spark_dws1 >> t4_spark_dws2 >> t5_spark_dwd >> t6_hive_to_mysql >> email
+    t1_to_mysql1 >> t1_to_mysql2 >> t2_to_ods >> t3_spark_dwd >> t4_spark_dws1 >> t4_spark_dws2 >> t5_spark_dwd >> t6_hive_to_mysql >> email
