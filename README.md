@@ -190,21 +190,23 @@ graph LR
 ```text
 ├── opt/app/airflow_workspace/
 |   └──airflow/dags                 
-│           └── bigdata.py           # Airflow 调度脚本
+│           └── bigdata.py   # Airflow 调度脚本
 |
-├── opt/app/datax/                   # DataX数据抽取配置
+├── opt/app/datax/           # DataX数据抽取配置
 │   ├── *.json
 |
-├── py_data/                         # Spark 核心计算逻辑
-│   ├── dwd.py                       # ODS -> DWD 维度退化与 NLP 情感打标
-│   ├── dws1.py                      # DWD -> DWS 局部加盐预聚合 (防倾斜核心)
-│   ├── dws2.py                      # T-1 全量快照更新
-│   └── ads.py                       # DWS -> ADS威尔逊算法与业务指标出库
+├── py_data/                 # Spark 核心计算逻辑
+│   ├── dwd.py               # ODS -> DWD 维度退化与 NLP 情感打标
+│   ├── dws1.py              # DWD -> DWS 局部加盐预聚合 (防倾斜核心)
+│   ├── dws2.py              # T-1 全量快照更新
+│   └── ads.py               # DWS -> ADS威尔逊算法与业务指标出库
 |
-├── 维度表/                          # ods层维度数据
+├── 维度表/                  # ods层维度数据
 ├── 原始事实表/                     
-|   ├── shuju.py                     # 数据扩展生成器
-|   └── *.csv                        # ods原始事实数据
+|   ├── shuju.py             # 数据扩展生成器
+|   └── *.csv                # ods原始事实数据
 |
-├── mysql.sql                        # MySQL数据库建表语句
-├── hive.sql                         # Hive数仓建表语句
+├── mysql.sql                # MySQL数据库建表语句
+├── hive.sql                 # Hive数仓建表语句
+|
+├── 配置文件                 # 各组件所需的配置文件
