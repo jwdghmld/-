@@ -4,7 +4,7 @@
   1.  input-b	存储用户行为数据
   2.  input-c	存储商品评论数据
 
-#### 在hdfs中 **ODS** 层需要两个临时表：
+#### 在hdfs中 **ODS** 层需要两个临时表(hive已配置)：
   1.  user_behavior_tmp	存储用户行为数据
   2.  user_comment_tmp	存储商品评论数据
 
