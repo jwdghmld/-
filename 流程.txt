@@ -1,0 +1,302 @@
+一、设置下载源：
+# 替换默认源为清华源
+sed -e 's|^mirrorlist=|#mirrorlist=|g' \
+    -e 's|^#baseurl=http://dl.rockylinux.org/$contentdir|baseurl=https://mirrors.tuna.tsinghua.edu.cn/rocky|g' \
+    -i.bak \
+    /etc/yum.repos.d/rocky-*.repo
+
+# 另外，建议顺便安装并配置 EPEL 附加软件源（很多大数据周边工具会用到）
+dnf install -y epel-release
+sed -e 's!^metalink=!#metalink=!g' \
+    -e 's!^#baseurl=!baseurl=!g' \
+    -e 's!https\?://download\.fedoraproject\.org/pub/epel!https://mirrors.tuna.tsinghua.edu.cn/epel!g' \
+    -e 's!https\?://download\.example/pub/epel!https://mirrors.tuna.tsinghua.edu.cn/epel!g' \
+    -i.bak \
+    /etc/yum.repos.d/epel*.repo
+
+下载所需的软件：
+# 安装 vim, wget, tar, 压缩工具及网络排查工具
+dnf install -y vim wget curl tar gzip bzip2 net-tools bind-utils lsof
+
+# 清除缓存并生成新缓存
+dnf clean all
+dnf makecache
+
+二、配置sudo
+visudo
+
+dage	ALL=(ALL)	NOPASSWD: ALL
+
+
+三、修改hostname：  以下步骤要root权限，先切换到root用户，或者sudo
+
+hostnamectl set-hostname node1
+
+四、修改为静态ip：
+
+nmcli connection modify ens160 \
+  ipv4.addresses 192.168.92.130/24 \
+  ipv4.gateway 192.168.92.2 \
+  ipv4.dns "8.8.8.8,114.114.114.114" \
+  ipv4.method manual \
+  connection.autoconnect yes
+重启网卡
+nmcli connection up ens160
+
+五、配置ip映射
+vim /etc/hosts
+（实际填写）
+   192.168.1.101 node1
+   192.168.1.102 node2
+   192.168.1.103 node3
+
+六、miniconda3配置详情：
+# 清华源
+conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/
+conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/
+conda config --set show_channel_urls yes
+
+# 如果你不想每次打开终端都自动进入base环境
+conda config --set auto_activate_base false
+
+#修改初始化条件，避免反复初始化
+vim ~/.bashrc
+# >>> conda initialize >>>
+# 只在交互式Shell下才初始化conda
+if [[ $- == *i* ]]; then
+    __conda_setup="$('/home/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+    if [ $? -eq 0 ]; then
+        eval "$__conda_setup"
+    else
+        if [ -f "/home/miniconda3/etc/profile.d/conda.sh" ]; then
+            . "/home/miniconda3/etc/profile.d/conda.sh"
+        else
+            export PATH="/home/miniconda3/bin:$PATH"
+        fi
+    fi
+    unset __conda_setup
+else
+    # 非交互式Shell只添加基本路径，不初始化
+    export PATH="/home/miniconda3/bin:$PATH"
+fi
+# <<< conda initialize <<<
+
+#配置pip为清华源
+pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+
+#创建spark的虚拟环境
+conda create -n spark python=3.10 -y
+
+#下载所需要的包（各版本兼容）
+pip install pyspark==3.5.8  pandas==2.0.3  numpy==1.24.3  pyarrow==12.0.1
+
+配置airflow的虚拟环境
+conda create -n airflow python=3.11-y
+
+#下载所需的包,包括各种连接的包
+
+
+七、安装jdk-8 以及配置profile和.bashrc文件
+sudo dnf install -y java-1.8.0-openjdk-devel
+sudo vim /etc/profile
+
+# ==================== 大数据组件环境变量 ====================
+# Java
+export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk
+export PATH=$JAVA_HOME/bin:$PATH
+
+# Hadoop
+export HADOOP_HOME=/opt/app/hadoop-3.3.6
+export HADOOP_CONF_DIR=$HADOOP_HOME/etc/hadoop
+export PATH=$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$PATH
+
+# Spark
+export SPARK_HOME=/opt/app/spark-3.5.8
+export PATH=$SPARK_HOME/bin:$SPARK_HOME/sbin:$PATH
+
+# Hive
+export HIVE_HOME=/opt/app/hive-3.1.3
+export HIVE_CONF_DIR=$HIVE_HOME/conf
+export PATH=$HIVE_HOME/bin:$PATH
+
+.bashrc 也同样设置
+python的路径单独在spark设置，airflow只需要在启动的时候切换无需配置
+
+八、克隆节点。并对子节点修改静态ip并初始化集群
+1，每个节点进行第一步：
+
+2，设置集群的免密登录： 在dage用户下
+ssh-keygen -t rsa
+（一直回车）
+发送密钥给其他节点：（每个节点都要执行一次，输入yes和密码）
+ssh-copy-id node1
+ssh-copy-id node2
+ssh-copy-id node3
+
+3, 关闭防火墙
+systemctl stop firewalld
+systemctl disable firewalld
+
+4, 将准备好的配置文件直接放到对应的组件位置上spark，hadoop ，hive
+
+5，初始化hadoop
+hdfs namenode -format
+
+6，配置node2的mysql（元数据库，hive和airflow的）
+sudo dnf install -y mysql-server
+
+开机自启动：
+sudo systemctl start mysqld
+sudo systemctl enable mysqld
+
+配置utf8
+sudo vim /etc/my.cnf.d/mysql-server.cnf
+
+[mysqld]
+   # ... 其他默认配置保持不变 ...
+   character-set-server=utf8mb4
+   collation-server=utf8mb4_general_ci
+配置简单密码：
+SET GLOBAL validate_password.policy = 0;
+SET GLOBAL validate_password.length = 4;
+
+修改root用户：
+ALTER USER 'root'@'localhost' IDENTIFIED BY '123456';
+创建远程连接的root用户：
+CREATE USER 'root'@'%' IDENTIFIED  BY '123456';
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
+flush privileges;
+
+7， 创建hive的元数据库：
+CREATE DATABASE metastore DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+
+把mysql的jar包放到 hive 的 lib 目录下,spark的jars目录下，
+
+8，解决Guava冲突：hive与hadoop的
+# 进入 hive 的 lib 目录删除低版本
+rm -f $HIVE_HOME/lib/guava-19.0.jar
+
+# 从 hadoop 拷贝高版本到 hive
+cp $HADOOP_HOME/share/hadoop/common/lib/guava-27.0-jre.jar $HIVE_HOME/lib/
+
+9，初始化hive
+schematool -dbType mysql -initSchema
+
+10，移除冲突的日志包（hadoop）
+mv $HADOOP_HOME/share/hadoop/common/lib/slf4j-reload4j-1.7.36.jar $HADOOP_HOME/share/hadoop/common/lib/slf4j-reload4j-1.7.36.jar.bak
+cp $HIVE_HOME/lib/log4j-slf4j-impl-2.17.1.jar $HADOOP_HOME/share/hadoop/common/lib/
+cp $HIVE_HOME/lib/log4j-api-2.17.1.jar $HADOOP_HOME/share/hadoop/common/lib/
+cp $HIVE_HOME/lib/log4j-core-2.17.1.jar $HADOOP_HOME/share/hadoop/common/lib/
+
+给node2，3复制一份
+scp $HIVE_HOME/lib/log4j-slf4j-impl-2.17.1.jar node2:$HADOOP_HOME/share/hadoop/common/lib/
+scp $HIVE_HOME/lib/log4j-api-2.17.1.jar node2:$HADOOP_HOME/share/hadoop/common/lib/
+scp $HIVE_HOME/lib/log4j-core-2.17.1.jar node2:$HADOOP_HOME/share/hadoop/common/lib/
+
+scp $HIVE_HOME/lib/log4j-slf4j-impl-2.17.1.jar node3:$HADOOP_HOME/share/hadoop/common/lib/
+scp $HIVE_HOME/lib/log4j-api-2.17.1.jar node3:$HADOOP_HOME/share/hadoop/common/lib/
+scp $HIVE_HOME/lib/log4j-core-2.17.1.jar node3:$HADOOP_HOME/share/hadoop/common/lib/
+
+九、配置airflow
+1，准备好airflow的python环境
+conda create -n airflow python=3.11 -y
+
+2, 准备元数据库（mysql）用户使用的 root
+CREATE DATABASE airflow CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+3，创建工作目录airflow
+mkdir -p /opt/app/airflow
+cd /opt/app/airflow
+export AIRFLOW_HOME=/opt/app/airflow
+
+4，安装airflow=2.10.5
+av=2.10.5
+pv=3.11
+con="https://raw.githubusercontent.com/apache/airflow/constraints-${av}/constraints-${pv}.txt"
+# 安装 Airflow，同时指定安装 MySQL 扩展包
+pip install "apache-airflow==${av}" --constraint "${con}"
+pip install PyMySQL
+
+5，工作环境配置（第三步）
+airflow config list > /dev/null
+
+vim $AIRFLOW_HOME/airflow.cfg
+编辑为mysql数据库
+[database]
+sql_alchemy_conn = mysql+pymysql://root:123456@node2:3306/airflow
+
+配置执行器
+[core]
+executor = LocalExecutor
+
+关闭加载实例DAG
+[core]
+load_examples = False
+
+修改时区
+[core]
+default_timezone = Asia/Shanghai
+
+DAG文件存放位置 
+[core]
+dags_folder = /opt/app/airflow/dags
+
+Email信息功能
+[smtp]
+smtp_host=smtp.qq.com
+smtp_starttls=True
+smtp_ssl=False
+smtp_user=2517@qq.com
+smtp_password=请自行去QQ邮箱里配置
+smtp_port=587
+smtp_mail_from=2517@qq.com
+
+6，正式初始化
+airflow db migrate
+
+创建管理员：
+airflow users create \
+    --username admin \
+    --firstname Data \
+    --lastname Admin \
+    --role Admin \
+    --email 2517749950@qq.com \
+    --password 123456
+
+7,补充可能用到的依赖：
+sudo dnf install -y --enablerepo=crb --enablerepo=devel \
+    krb5-devel \
+    krb5-libs \
+    krb5-workstation \
+    mysql-devel \
+    pkg-config \
+    gcc \
+    gcc-c++ \
+    python3-devel \
+    cyrus-sasl-devel \
+    openldap-devel
+
+安装后续所需的所有依赖包
+pip install "apache-airflow-providers-apache-hive" \
+            "apache-airflow-providers-apache-hdfs" \
+            "apache-airflow-providers-apache-spark" \
+	    "apache-airflow-providers-mysql" --constraint "${con}"
+
+
+
+
+
+到此时所有组件安装完毕--
+#开启hadoop:
+start-all.sh
+#开启hive
+nohup $HIVE_HOME/bin/hive --service metastore >/dev/null 2>~/meta.log &
+nohup $HIVE_HOME/bin/hiveserver2 >/dev/null 2>~/hive2.log &
+#开启airflow
+airflow webserver -p 8080 -D
+airflow scheduler -D
+
+
+
+
+
