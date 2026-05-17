@@ -24,7 +24,7 @@
               {"name": "user_id", "type": "BIGINT"},
               {"name": "goods_id", "type": "BIGINT"},
               {"name": "category_id", "type": "BIGINT"},
-              {"name": "behavior", "type": "BIGINT"},
+              {"name": "behavior", "type": "string"},
               {"name": "timestamp", "type": "BIGINT"},
               {"name": "sex", "type": "BIGINT"},
               {"name": "address", "type": "string"},
