@@ -85,7 +85,7 @@
 | Hadoop   | 3.3.6   | 分布式存储与 YARN 资源管理      |  集群 |
 | Hive     | 3.1.3   | 元数据管理与 ODS 接入           |  hive on hadoop |
 | Spark    | 3.5.8   | 核心计算引擎 (PySpark)          |  spark on yarn |
-| Airflow  | 2.5.1   | 全链路 DAG 任务调度             |  单机    |
+| Airflow  | 2.10.5   | 全链路 DAG 任务调度             |  单机    |
 | Datax    | 3.0     | 异构数据同步 (HDFS ↔ MySQL)     |   单机   |
 | Mysql    |  8.0    | hive和airflow的元数据库以及业务数据库           |   单机   |
 
