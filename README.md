@@ -81,19 +81,19 @@
 
 |   组件   |   版本  |                说明             |   配置  |
 |:----------:|:---------:|:-------------------------------:|:---------:|
-| Rocky    | linux 9 | 企业级 RHEL 系稳定内核          |   系统   |
+| Rocky    | linux 9.7 | 企业级 RHEL 系稳定内核          |   系统   |
 | Hadoop   | 3.3.6   | 分布式存储与 YARN 资源管理      |  集群 |
 | Hive     | 3.1.3   | 元数据管理与 ODS 接入           |  hive on hadoop |
 | Spark    | 3.5.8   | 核心计算引擎 (PySpark)          |  spark on yarn |
 | Airflow  | 2.10.5   | 全链路 DAG 任务调度             |  单机    |
 | Datax    | 3.0     | 异构数据同步 (HDFS ↔ MySQL)     |   单机   |
-| Mysql    |  8.0    | hive和airflow的元数据库以及业务数据库           |   单机   |
+| Mysql    |  8.0.45    | hive和airflow的元数据库以及业务数据库           |   单机   |
 
 
 #### 🐍 Python 运行环境管理工具： Miniforge3 (Conda 兼容)
 
-* Spark 环境： Python 3.9
-* Airflow 环境： Python 3.10 (利用高版本 Python 提升调度器并发效率)
+* Spark 环境： Python 3.10
+* Airflow 环境： Python 3.11 
 
 ## 🔄 3. 任务流转与数据血缘
 
