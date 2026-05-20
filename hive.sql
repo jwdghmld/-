@@ -136,7 +136,7 @@ TBLPROPERTIES ("orc.compress"="SNAPPY");
 CREATE TABLE IF NOT EXISTS dwd.dwd_user_comment(
     user_id          STRING COMMENT '用户ID',
     category_id      STRING COMMENT '类目ID',
-  `comment`          INT COMMENT '评论类别',
+  `comment`          STRING COMMENT '评论内容',
     face             STRING COMMENT '用户职业标签 (来自维表)',
     category_label   STRING COMMENT '商品类目名称 (来自维表)'
 )
