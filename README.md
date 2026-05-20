@@ -16,7 +16,7 @@
   
 * 分桶设计： 在 ODS 层对表针对 user_id 和 category_id 进行有序分桶,便于后续的 DWD join 操作时触发 **分桶裁剪** 和 **SMB**,极大减少 Shuffle 带来的性能消耗
 
-* 二阶段聚合： 在 DWS 层针对数据表中的热点 Key 问题，采用二阶段聚合聚合的方法来优化 Spark 任务性能
+* 二阶段聚合： 在 DWS 层针对数据表中的热点 Key 问题，采用二阶段聚合的方法来优化 Spark 任务性能
 ```
     # 1. 局部聚合 (加盐)：给 face 加上 0~9 的随机前缀，强行打散职业热点
     beh_salted = beh.withColumn("face", F.concat(F.lit(F.round(F.rand() * 9)).cast("int"), F.lit("_"), F.col("face")))
@@ -124,7 +124,7 @@
   - 产出： dwd_user_behavior (行为明细表)、dwd_user_comment (评论打标表)
 - **DWD ➔ DWS (汇总层)**
   - 策略： 评论转化，同时进行增量聚合（当日指标）与全量聚合（历史快照合并）
-  - 技术点：引入随机加盐和二次聚合优化 Spark 聚合性能
+  - 技术点：引入二阶段聚合优化 Spark 聚合性能
 - **DWS ➔ ADS (应用层)**
   - 威尔逊下限算法、职业偏好加权计算
 - **ADS ➔ MySQL**
