@@ -16,7 +16,25 @@
   
 * 分桶设计： 在 ODS 层对表针对 user_id 和 category_id 进行有序分桶,便于后续的 DWD join 操作时触发 **分桶裁剪** 和 **SMB**,极大减少 Shuffle 带来的性能消耗
 
-* 二次聚合： 在 DWS 层针对数据表中的商品热点 Key 问题，采用随机加盐和二次聚合的方法来优化 Spark 任务性能
+* 二阶段聚合： 在 DWS 层针对数据表中的热点 Key 问题，采用二阶段聚合聚合的方法来优化 Spark 任务性能
+```
+    # 1. 局部聚合 (加盐)：给 face 加上 0~9 的随机前缀，强行打散职业热点
+    beh_salted = beh.withColumn("face", F.concat(F.lit(F.round(F.rand() * 9)).cast("int"), F.lit("_"), F.col("face")))
+    beh_salted.createTempView("beh1")
+    beh1 = spark.sql("select face,category_label,\
+        sum(if(behavior='pv',1,0)) as pv_count,\
+        sum(if(behavior='cart',1,0)) as cart_count,\
+        sum(if(behavior='buy',1,0)) as buy_count\
+        from beh1 group by face,category_label")
+    # 2. 全局聚合 (去盐)：把随机前缀切掉，再做一次 SUM
+    beh2 = beh1.withColumn("face", F.split(F.col("face"), "_")[1])
+    beh2.createTempView("beh2")
+    beh_result = spark.sql("select face,category_label,\
+        sum(pv_count) as pv_count,\
+        sum(cart_count) as cart_count,\
+        sum(buy_count) as buy_count\
+        from beh2 group by face,category_label")
+```
   
 
 #### 📖 业务背景与目标
@@ -27,7 +45,7 @@
 
 - 科学的品牌口碑管理：引入威尔逊置信区间下限算法（**ads_goods_score**），通过数学模型消除小样本偏差，构建公平、公信的商品评价体系，增强平台用户信任度
 
-- 全链路消费行为洞察：利用 NLP 技术和广播变量对千万级评论进行情感打标（**dwd_user_comment**），帮助业务方快速捕捉用户对商品质量及物流服务的真实反馈，驱动服务链路的迭代优化
+- 全链路消费行为洞察：利用 NLP 技术和广播变量对评论进行情感打标（**dwd_user_comment**），帮助业务方快速捕捉用户对商品质量及物流服务的真实反馈，驱动服务链路的迭代优化
 
 #### 📁 建表详情：
 
@@ -92,7 +110,7 @@
 | Mysql    |  8.0.45    | hive和airflow的元数据库以及业务数据库 |   单机   |
 
 
-#### 🐍 Python 运行环境管理工具： Miniforge3 (Conda 兼容)
+#### 🐍 Python 运行环境管理工具： Miniforge3
 
 * Spark 环境： Python 3.10
 * Airflow 环境： Python 3.11 
@@ -102,10 +120,10 @@
 - **L-M-H 环节 (Linux -> MySQL -> Hive)**
   - 通过 DataX 将业务库数据抽取至 Hive ODS 层分桶分区表
 - **ODS ➔ DWD (清洗层)**
-  - 动作： 去重、空值过滤、用户画像 Join、评论转化，广播变量
+  - 动作： 去重、空值过滤、用户画像 Join，广播小表
   - 产出： dwd_user_behavior (行为明细表)、dwd_user_comment (评论打标表)
 - **DWD ➔ DWS (汇总层)**
-  - 策略： 同时进行增量聚合（当日指标）与全量聚合（历史快照合并）
+  - 策略： 评论转化，同时进行增量聚合（当日指标）与全量聚合（历史快照合并）
   - 技术点：引入随机加盐和二次聚合优化 Spark 聚合性能
 - **DWS ➔ ADS (应用层)**
   - 威尔逊下限算法、职业偏好加权计算
