@@ -38,37 +38,6 @@ if __name__ == "__main__":
     #评论大表
     user_comment = user_com.join(user_face,on='user_id',how='left').join(goods,on=['category_id'],how='left')
 
-    #评论转化--可扩展
-    positive_words = {"好", "不错", "喜欢", "清晰", "快", "赞", "满意", "值得", "很多", "好吃"}
-    negative_words = {"差", "坏", "慢", "卡", "失望", "退货", "垃圾", "不行", "扔", "乱", "难吃", "故障", "说法", "难","返修", "变质"}
-    #创建广播变量
-    broadcast_pos = spark.sparkContext.broadcast(positive_words)
-    broadcast_neg = spark.sparkContext.broadcast(negative_words)
-
-    def analyze_sentiment(comment):
-        if not comment:
-            return 0
-        #引入词典
-        pos_words = broadcast_pos.value
-        neg_words = broadcast_neg.value
-        # 词频统计
-        words = jieba.lcut(comment)
-        score = 0
-        for word in words:
-            if word in pos_words:
-                score += 1
-            elif word in neg_words:
-                score -= 1
-        # 打标
-        if score >=1 :
-            return 1
-        else :
-            return 0
-
-    #注册为UDF函数
-    analyze_sentiment = F.udf(analyze_sentiment, IntegerType())
-    #更新评论
-    user_comment = user_comment.withColumn("comment", analyze_sentiment(F.col("comment")))
     #挂载无划线格式的 dt 分区字段
     user_behavior_final = user_behavior.withColumn("dt", F.lit(dt_value))
     user_comment_final = user_comment.withColumn("dt", F.lit(dt_value))
