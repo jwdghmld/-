@@ -30,6 +30,39 @@ if __name__ == "__main__":
     #商品评论统计表
     com = spark.sql(f"select category_label,comment from dwd_user_comment where dt = '{dt_value}'")
 
+    #评论转化--可扩展
+    positive_words = {"好", "不错", "喜欢", "清晰", "快", "赞", "满意", "值得", "很多", "好吃"}
+    negative_words = {"差", "坏", "慢", "卡", "失望", "退货", "垃圾", "不行", "扔", "乱", "难吃", "故障", "说法", "难","返修", "变质"}
+    #创建广播变量
+    broadcast_pos = spark.sparkContext.broadcast(positive_words)
+    broadcast_neg = spark.sparkContext.broadcast(negative_words)
+
+    def analyze_sentiment(comment):
+        if not comment:
+            return 0
+        #引入词典
+        pos_words = broadcast_pos.value
+        neg_words = broadcast_neg.value
+        # 词频统计
+        words = jieba.lcut(comment)
+        score = 0
+        for word in words:
+            if word in pos_words:
+                score += 1
+            elif word in neg_words:
+                score -= 1
+        # 打标
+        if score >=1 :
+            return 1
+        else :
+            return 0
+
+    #注册为UDF函数
+    analyze_sentiment = F.udf(analyze_sentiment, IntegerType())
+    #更新评论
+    com = com.withColumn("comment", analyze_sentiment(F.col("comment")))
+	
+
     #二次聚合
     #  一、用户行为
     # 1. 局部聚合 (加盐)：给 goods_id 加上 0~9 的随机前缀，强行打散热点
