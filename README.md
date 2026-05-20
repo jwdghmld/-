@@ -12,9 +12,11 @@
 
 * 存储格式： 除 ODS 层的临时表外，全线采用 ORC 格式存储。相比 TextFile，ORC 提供的列式存储和索引能提升 Spark 约 3-5 倍的查询速度，并大幅降低 HDFS 空间占用
   
-* 分区设置（Partitioning）： 统一以 dt (日期) 作为一级分区字段，实现动态分区加载，避免全表扫描，满足 ODS 每日增量同步的需求
+* 分区设置： 统一以 dt (日期) 作为一级分区字段，实现动态分区加载，避免全表扫描，满足 ODS 每日增量同步的需求
   
-* 分桶设计（Bucketing）：  在 ODS 层对表针对 user_id 和 category_id 进行有序分桶,便于后续的 DWD join 操作时触发 **分桶裁剪** 和 **SMB**,极大减少Shuffle带来的性能消耗
+* 分桶设计： 在 ODS 层对表针对 user_id 和 category_id 进行有序分桶,便于后续的 DWD join 操作时触发 **分桶裁剪** 和 **SMB**,极大减少 Shuffle 带来的性能消耗
+
+* 二次聚合： 在 DWS 层针对数据表中的商品热点 Key 问题，采用随机加盐和二次聚合的方法来优化 Spark 任务性能
   
 
 #### 📖 业务背景与目标
@@ -87,7 +89,7 @@
 | Spark    | 3.5.8   | 核心计算引擎 (PySpark)          |  spark on yarn |
 | Airflow  | 2.10.5   | 全链路 DAG 任务调度             |  单机    |
 | Datax    | 3.0     | 异构数据同步 (HDFS ↔ MySQL)     |   单机   |
-| Mysql    |  8.0.45    | hive和airflow的元数据库以及业务数据库           |   单机   |
+| Mysql    |  8.0.45    | hive和airflow的元数据库以及业务数据库 |   单机   |
 
 
 #### 🐍 Python 运行环境管理工具： Miniforge3 (Conda 兼容)
@@ -97,8 +99,6 @@
 
 ## 🔄 3. 任务流转与数据血缘
 
-#### 整个 pipeline 通过 Airflow 编排，数据在各层间经历了从“脏数据”到“黄金指标”的蜕变：
-
 - **L-M-H 环节 (Linux -> MySQL -> Hive)**
   - 通过 DataX 将业务库数据抽取至 Hive ODS 层分桶分区表
 - **ODS ➔ DWD (清洗层)**
@@ -106,7 +106,7 @@
   - 产出： dwd_user_behavior (行为明细表)、dwd_user_comment (评论打标表)
 - **DWD ➔ DWS (汇总层)**
   - 策略： 同时进行增量聚合（当日指标）与全量聚合（历史快照合并）
-  - 技术点： 引入局部加盐（Salting）处理计算倾斜
+  - 技术点：引入随机加盐和二次聚合优化 Spark 聚合性能
 - **DWS ➔ ADS (应用层)**
   - 威尔逊下限算法、职业偏好加权计算
 - **ADS ➔ MySQL**
@@ -184,7 +184,7 @@ graph LR
 #### 💾 集群内存调优针对 Rocky Linux 9 与 Spark 3.5.8 的特性，进行了以下资源适配：
 
 * 动态申请： 开启 `spark.dynamicAllocation.enabled`，根据负载自动伸缩 Executor 数量。
-* 并行度优化： 根据 YARN 虚拟核数比例调整 `spark.sql.shuffle.partitions=24`，确保 CPU 核心始终处于满载状态，绝无空闲等待。
+* 并行度优化： 根据 YARN 虚拟核数比例调整 `spark.sql.shuffle.partitions`，确保 CPU 核心始终处于满载状态，绝无空闲等待。
 
 ## 📊 6. 仓库目录结构 (Repository Structure)
 ```text
@@ -210,5 +210,5 @@ graph LR
 ├── hive.sql                 # Hive数仓建表语句
 |
 ├── 配置文件                 # 各组件所需的配置文件
-├── 流程.md                  # 复刻该数仓的全流程
+├── 流程.md                  # 数仓构建的全流程
 ```
