@@ -148,7 +148,7 @@ graph LR
 
     subgraph 清洗
         ODS -->|去重/过滤/Join| Behavior[dwd_user_behavior]
-        ODS -->|清洗/打标| Comment[dwd_user_comment]
+        ODS -->|清洗/去重/Join| Comment[dwd_user_comment]
     end
 
     subgraph 汇总
