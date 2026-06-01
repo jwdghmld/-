@@ -63,7 +63,7 @@
 |ods_category_mapping_full|商品类目映射表|存储商品 ID 与类目名称的映射关系|ORC|partition(dt='yyyyMMdd')|按照category_id有序分桶|
 
   2. DWD 层 (明细数据层)
-- 此层进行数据清洗、脱敏、关联维表及 NLP 处理。
+- 此层进行数据清洗、脱敏、关联维表
 
 |表名          |       说明       |   行为逻辑   |文件类型   |分区设置|  分桶设置 |
 | :-------------:|-----------------|-------------|------------|:--------:|----------|
@@ -95,7 +95,7 @@
 
 ## ⚙️ 2. 集群环境与技术栈配置
 
-#### 本项目采用了严格的环境隔离方案，通过 Miniforge3 实现了计算引擎与调度引擎的 Python 环境解耦
+#### 本项目采用了严格的环境隔离方案，通过 Miniconda 实现了计算引擎与调度引擎的 Python 环境解耦
 
 #### 组件版本说明：
 
@@ -110,7 +110,7 @@
 | Mysql    |  8.0.45    | hive和airflow的元数据库以及业务数据库 |   单机   |
 
 
-#### 🐍 Python 运行环境管理工具： Miniforge3
+#### 🐍 Python 运行环境管理工具： Miniconda3
 
 * Spark 环境： Python 3.10
 * Airflow 环境： Python 3.11 
@@ -199,10 +199,6 @@ graph LR
 * 失败即通知： 任何任务实例失败，第一时间向管理员邮箱发送错误日志。
 * 状态全闭环： 支持任务重启（Retry）通知及全量任务成功报告。
 
-#### 💾 集群内存调优针对 Rocky Linux 9 与 Spark 3.5.8 的特性，进行了以下资源适配：
-
-* 动态申请： 开启 `spark.dynamicAllocation.enabled`，根据负载自动伸缩 Executor 数量。
-* 并行度优化： 根据 YARN 虚拟核数比例调整 `spark.sql.shuffle.partitions`，确保 CPU 核心始终处于满载状态，绝无空闲等待。
 
 ## 📊 6. 仓库目录结构 (Repository Structure)
 ```text
